@@ -6,14 +6,16 @@
 //
 // 12/21 nhom con co mot cau doc thoai noi sau, cach mot khoang im 5-15 giay.
 //
-// Am luong hai tang nhan nhau:
+// Am luong hai tang cua ban goc nhan nhau:
 //   - tung clip: 0.8 (ca 108 clip deu vay)
 //   - kenh Voice1: fader chay giua 0.5 (nen) va 0.8 (dang noi), duong cong sinlerp
+// roi ca hai di tiep qua duong am tong cua sound.js (phim M) - tang nay la cua
+// ban web, ban goc khong co.
 //
 // Khong co phu de - tra ca 108 ten trong autotext_SC deu khong co, va cac khoi
 // AR:Sound gossip khong co truong text. La tieng nen co y de moc.
 
-import { getAudioContext, loadBuffer } from './sound.js';
+import { getAudioContext, getMasterNode, loadBuffer } from './sound.js';
 
 // --- hang so tu ban goc ---
 const CLIP_VOL   = 0.8;    // am luong tung clip
@@ -197,7 +199,7 @@ export function startGossip(){
   if (!gain){
     gain = ctx.createGain();
     gain.gain.value = CH_IDLE;
-    gain.connect(ctx.destination);
+    gain.connect(getMasterNode());   // qua duong am tong de phim M voi toi
   }
 
   if (groupIndex >= GOSSIP.length){

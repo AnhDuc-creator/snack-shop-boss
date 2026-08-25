@@ -149,7 +149,8 @@ export const CUES = {
 
 let ctx = null;
 let enabled = true;
-let master = 1;
+let masterNode = null;          // duong am tong, xem getMasterNode()
+let masterVol = 1;              // nho muc de dat lai neu ctx sinh sau setVolume()
 const buffers = new Map();      // ten file -> AudioBuffer
 const playing = new Map();      // kenh -> BufferSource dang chay
 const pending = new Map();      // ten file -> Promise dang nap (tranh fetch trung)
@@ -160,6 +161,9 @@ function ensureCtx(){
   const AC = window.AudioContext || window.webkitAudioContext;
   if (!AC){ enabled = false; return null; }
   ctx = new AC();
+  masterNode = ctx.createGain();
+  masterNode.gain.value = masterVol;
+  masterNode.connect(ctx.destination);
   return ctx;
 }
 
@@ -197,6 +201,20 @@ export async function initSound(){
 export function getAudioContext(){ return ensureCtx(); }
 
 /**
+ * Node am tong. MOI nguon tieng phai noi vao day, khong noi thang vao
+ * ctx.destination - noi thang thi setVolume/toggleMute khong voi toi.
+ *
+ * Truoc day am luong tong duoc nhan tay vao tung `gain.value` trong play(),
+ * nen gossip - dung duong rieng - khong chiu anh huong cua phim M.
+ *
+ * Tra ve null neu trinh duyet khong co Web Audio.
+ */
+export function getMasterNode(){
+  ensureCtx();
+  return masterNode;
+}
+
+/**
  * Nap lui mot clip theo ten (khong duoi). Tra ve AudioBuffer, hoac null neu hong.
  * Dung chung `buffers` voi CUES nen clip nao trung thi chi nap mot lan.
  *
@@ -231,8 +249,8 @@ export function play(cue){
   const src = ctx.createBufferSource();
   src.buffer = buf;
   const gain = ctx.createGain();
-  gain.gain.value = (def.vol ?? 1) * master;
-  src.connect(gain).connect(ctx.destination);
+  gain.gain.value = def.vol ?? 1;           // am luong tong nam o masterNode
+  src.connect(gain).connect(masterNode);
   src.onended = () => { if (playing.get(def.ch) === src) playing.delete(def.ch); };
   playing.set(def.ch, src);
   src.start();
@@ -244,9 +262,13 @@ export function playTray(cat, action){ play(`tray.${cat}.${action}`); }
 /** Nhat nguyen lieu tu quay ('counter') hoac tu ngan tu lanh ('fridge'). */
 export function playPick(site, food){ play(`${site}.${food}.pick`); }
 
-export function setVolume(v){ master = Math.min(1, Math.max(0, v)); }
-export function getVolume(){ return master; }
-export function toggleMute(){ master = master ? 0 : 1; return master; }
+export function setVolume(v){
+  masterVol = Math.min(1, Math.max(0, v));
+  if (masterNode) masterNode.gain.value = masterVol;
+  return masterVol;
+}
+export function getVolume(){ return masterVol; }
+export function toggleMute(){ return setVolume(masterVol ? 0 : 1); }
 
 /** Liet ke su kien chua co file - tien de biet con thieu gi. */
 export function missingCues(){

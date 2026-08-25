@@ -152,6 +152,8 @@ let enabled = true;
 let master = 1;
 const buffers = new Map();      // ten file -> AudioBuffer
 const playing = new Map();      // kenh -> BufferSource dang chay
+const pending = new Map();      // ten file -> Promise dang nap (tranh fetch trung)
+let loadedAll = false;          // initSound da nap het CUES chua
 
 function ensureCtx(){
   if (ctx || !enabled) return ctx;
@@ -180,9 +182,35 @@ async function loadOne(name){
 export async function initSound(){
   if (!ensureCtx()) return;
   if (ctx.state === 'suspended') await ctx.resume();
-  if (buffers.size) return;
+  // Khong dung `buffers.size` lam co: gossip nap lui tung clip mot, chi can
+  // mot clip gossip vao truoc la ca bang CUES bi bo qua.
+  if (loadedAll) return;
+  loadedAll = true;
   const names = [...new Set(Object.values(CUES).flatMap(c => c.files))];
-  await Promise.all(names.map(loadOne));
+  await Promise.all(names.map(n => loadBuffer(n)));
+}
+
+/**
+ * AudioContext dung chung. Tra ve null neu trinh duyet khong ho tro hoac da tat tieng.
+ * Gossip can no de tu dung chuoi gain rieng cho kenh Voice1.
+ */
+export function getAudioContext(){ return ensureCtx(); }
+
+/**
+ * Nap lui mot clip theo ten (khong duoi). Tra ve AudioBuffer, hoac null neu hong.
+ * Dung chung `buffers` voi CUES nen clip nao trung thi chi nap mot lan.
+ *
+ * Gossip khong nap truoc: 108 clip la ~13 MB, doi het moi cho choi thi qua lau,
+ * ma moi lan vao quay chi dung mot nhom.
+ */
+export async function loadBuffer(name){
+  if (buffers.has(name)) return buffers.get(name);
+  if (!ensureCtx()) return null;
+  if (!pending.has(name)){
+    pending.set(name, loadOne(name).finally(() => pending.delete(name)));
+  }
+  await pending.get(name);
+  return buffers.get(name) ?? null;
 }
 
 /**

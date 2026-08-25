@@ -2,8 +2,13 @@
 Chuan bi am thanh cho minigame: tu .HIS trong thu muc game -> game/assets/sound/.
 
 Danh sach can gi KHONG viet tay. No doc thang tu bytecode cua scene s4210 -
-noi ban goc khai bao moi khoi AR.Sound. Them hay bot am trong ban goc thi
-chay lai la danh sach tu cap nhat, khong phai sua Python.
+noi ban goc khai bao moi khoi AR.Sound - VA cac script s4210 keo vao bang
+`Scene:Include`. Them hay bot am trong ban goc thi chay lai la danh sach tu
+cap nhat, khong phai sua Python.
+
+Vi sao phai lan theo Include: 108 clip tan gau nam trong `GossipVOs_SC`, khong
+nam trong `s4210`. Chi doc mot minh s4210 thi ra 86 am, thieu dung mot phan ba.
+Hien tai lan het ra 194 am (86 + 108).
 
 Chay rieng:
     py tools/sound_assets.py "<thu-muc-game>"     # copy + doi, day du
@@ -32,7 +37,8 @@ sys.path.insert(0, os.path.join(ROOT, "tools"))
 
 from his_to_wav import HEADER, CODEC_PCM, CODEC_VORBIS, parse_header, wav_bytes  # noqa: E402
 
-SCENE_LUAC = os.path.join(ROOT, "extracted", "lua", "s4210.luac")
+LUA_DIR = os.path.join(ROOT, "extracted", "lua")
+SCENE_LUAC = os.path.join(LUA_DIR, "s4210.luac")
 SRC_DIR = os.path.join(ROOT, "extracted", "sound_src")
 OUT_DIR = os.path.join(ROOT, "game", "assets", "sound")
 
@@ -46,15 +52,50 @@ def asset_name(stem):
     return s[:-4] if s.endswith("_sfx") else s
 
 
-def needed_sounds(luac=SCENE_LUAC):
-    """Moi ten am thanh scene s4210 nhac den, theo dung thu tu gap trong ma lenh."""
+def scene_tokens(luac):
+    """Hang so cua mot file .luac theo dung thu tu gap trong ma lenh."""
     from luaparse import parse
     from luatrace import trace
 
-    seen, out = set(), []
     for f in parse(luac):
         for tok in trace(f):
-            tok = str(tok)
+            yield str(tok)
+
+
+def includes(tokens):
+    """Ten script ma `Scene:Include{"..."}` keo vao.
+
+    Trong bytecode no ra thanh ba token lien tiep: Scene, Include, <ten>.
+    Doc bang cach lan token thay vi viet tay danh sach - them include trong
+    ban goc thi chay lai la tu bat duoc.
+    """
+    out = []
+    for i in range(len(tokens) - 2):
+        if tokens[i] == "Scene" and tokens[i + 1] == "Include":
+            out.append(tokens[i + 2])
+    return out
+
+
+def needed_sounds(luac=SCENE_LUAC):
+    """Moi ten am thanh scene s4210 va cac script no Include nhac den.
+
+    GossipVOs_SC nam o day: no giu 108 clip tan gau, `s4210` chi Include chu
+    khong khai bao lai. Bo qua no la thieu dung mot phan ba so am.
+    """
+    seen, out = set(), []
+    queue, done = [luac], set()
+
+    while queue:
+        path = queue.pop(0)
+        key = os.path.basename(path).lower()
+        if key in done or not os.path.isfile(path):
+            continue
+        done.add(key)
+
+        tokens = list(scene_tokens(path))
+        for name in includes(tokens):
+            queue.append(os.path.join(LUA_DIR, name + ".luac"))
+        for tok in tokens:
             if SFX.match(tok) and tok not in seen:
                 seen.add(tok)
                 out.append(tok)

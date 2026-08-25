@@ -4,6 +4,7 @@ import { FOODS, DUR, POP, MAX_SANDWICH, DISPENSERS, FRIDGE, OVEN,
          TOASTER, TRASH, TRAYS, ORDERS_UI } from './data.js';
 import { makeRound, findMatch } from './orders.js';
 import { play, playTray, playPick } from './sound.js';
+import { startGossip, stopGossip } from './gossip.js';
 import { inR, rh } from './render.js';
 
 export const S = {
@@ -22,6 +23,8 @@ export function newRound(){
   S.oven = {state:'closedEmpty', dough:false, t:0};
   S.toaster = {state:'empty', food:null, count:0, t:0, frame:0};
   S.round++;
+  stopGossip();
+  startGossip();          // moi vong don = mot lan "vao scene" o ban goc
 }
 
 export function tryPickUp(ti){

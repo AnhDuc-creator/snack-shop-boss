@@ -15,6 +15,14 @@ Xep theo thu tu tac dong toi cam giac choi.
 
 ## Chi tiet con thieu
 
+- **Loi tan gau (gossip).** Da moi xong, xem `docs/spec.md` muc 8. Chua noi vao game.
+  Can 108 file `.HIS` tren kenh Voice1, khong can phu de.
+  Mot suy dien chua chung minh truc tiep: `AR:Override` khong khai bao `active` thi mac dinh
+  active = true (nen `incrementGossip` chay luc nap scene). `AR` nam ben engine C++, khong
+  co file `.luac` de doc. Bang chung gian tiep: 104 khoi `AR:Override` trong game bo `active`,
+  moi script `*_Amb_sfx_SC` deu dung dang `onInit = AR:Override{RunOnce=...}`, va `Timer_SC`
+  ghi ro `if input.active == nil then self.active = true`. Muon chac tuyet doi thi phai
+  chay thu trong game goc va dem xem lan vao thu 2 co nghe nhom 2 khong.
 - 11 ma `UIFOOD` chua doi chieu. Nam trong `UI_Text_SC` hoac bang autotext.
   Cach lam: mo file do trong `extracted/lua/`, dung `tools/luatrace.py`.
 - Animation mo/dong tu lanh va nap thung rac. Da co `ovlDuration = 0.25` cho thung rac.

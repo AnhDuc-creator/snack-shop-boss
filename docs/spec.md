@@ -271,16 +271,16 @@ Nút quay ra: `207,365,502,399`
 ```
 startTeacherRound:
     startRandom = math.random(1, 4)
-    neu startRandom  2 thi bat teacherRoundTimer
+    neu startRandom == 2 thi bat teacherRoundTimer
 teacherRoundTimer.duration = math.random(2, 4)
 khi xong -> chuyen sang scene 4230 (teacherOrderRoundNAV)
 ```
 
-Phép so sánh `startRandom` với `2` chưa đọc rõ toán tử (`>` hay `==`) — cần xem opcode
-nhánh nếu muốn khớp tuyệt đối. Xác suất rơi vào khoảng 1/4 đến 3/4 mỗi vòng.
+Toán tử đã đọc rõ: opcode `EQ A=0 B=R(startRandom) C=K(2.0)` rồi `JMP` bỏ qua nhánh bật
+timer — tức là `if startRandom == 2 then`. **Xác suất đúng 1/4 mỗi lần vào scene**, không
+phải một khoảng.
 
-`gossipDelay` = `math.random(2, 10)` — hẹn giờ phát lời tán gẫu của khách, bị chặn nếu cờ
-`Curfew_FL` bật.
+`gossipDelay` — hẹn giờ phát lời tán gẫu của khách — xem mục 8.
 
 ---
 
@@ -409,10 +409,313 @@ Trong 86 âm minigame dùng: **46 file codec 1** (`.wav`) và **40 file codec 2*
 
 ---
 
-## 8. Còn thiếu
+## 8. Lời tán gẫu của khách (gossip)
+
+Nguồn: `GossipVOs_SC.luac` — 171 khối AR, 151 closure, 108 file âm thanh.
+`s4210` nạp nó bằng `Scene:Include{"GossipVOs_SC"}` ngay ở đầu scene; **không scene nào
+khác include file này**, nên lời tán gẫu chỉ tồn tại trong minigame quầy đồ ăn.
+
+Bộ đếm `VarTable.Gossip` nằm trong savegame. Không file `.luac` nào khác đụng vào nó.
+
+### 8.1 Cơ chế — bốn khối điều khiển
+
+```lua
+incrementGossip = AR:Override{                       -- khong co truong active
+    RunOnce = function() VarTable.Gossip = VarTable.Gossip + 1 end }
+
+playGossip = AR:Override{
+    RunOnce = function() _G["gossip" .. VarTable.Gossip .. "_VO"].active = true end,
+    active  = function() return gossipDelay.done and VarTable.Gossip < 22 end }
+
+fadeInGossip = MakeSoundFader{ duration = 3, startVol = 0.5, endVol = 0.8,
+    channel = SoundChannel.Voice1,
+    active  = function() return gossipDelay.done and VarTable.Gossip < 22 end }
+```
+
+và trong `s4210` (dòng 344–346):
+
+```lua
+gossipDelay = MakeTimer{ duration = math.random(2, 10),
+    active = function() return not Flags.Curfew_FL and not teacherRoundTimer.active end }
+```
+
+Diễn giải:
+
+1. **Vào scene** → `incrementGossip` chạy, `VarTable.Gossip += 1`.
+2. **Đồng hồ `gossipDelay` chạy**, hết giờ thì `done = true`.
+3. **`playGossip` bật đúng một nhóm**: `gossip<N>_VO.active = true` với `N = VarTable.Gossip`.
+   Cùng lúc `fadeInGossip` kéo kênh `Voice1` từ 0.5 lên 0.8 trong 3 giây.
+4. Các câu còn lại trong nhóm tự nối nhau bằng `.done` (mục 8.2).
+5. Cuối nhóm một `MakeSoundFader` kéo kênh về 0.5.
+
+`incrementGossip` không có trường `active`. Đây là thành ngữ chuẩn của engine — trong
+`extracted/lua/` có 104 khối `AR:Override` không khai báo `active`, trong đó mọi script
+`*_Amb_sfx_SC` đều dùng đúng dạng `onInit = AR:Override{ RunOnce = ... }` để chạy một lần
+lúc nạp scene. `Timer_SC.luac` còn ghi rõ quy tắc mặc định trong hàm `Create`:
+
+```lua
+if input.active == nil then self.active = true else self.active = input.active end
+```
+
+### 8.2 Phát theo cặp hội thoại, không phải câu lẻ — ĐÃ XÁC NHẬN
+
+Giả thuyết `Girl1_Ball01 → Girl2_Ball02 → Girl1_Ball03 → Girl2_Ball04` là một đoạn đối đáp
+là **đúng**. Bằng chứng trực tiếp từ bytecode, không phải suy từ tên file:
+
+```lua
+gossip7_VO  = AR:Sound{ sounds = "Girl1_Ball01_SFX", ..., active = false }
+gossip7B_VO = AR:Sound{ sounds = "Girl2_Ball02_SFX", ..., active = function() return gossip7_VO.done  end }
+gossip7C_VO = AR:Sound{ sounds = "Girl1_Ball03_SFX", ..., active = function() return gossip7B_VO.done end }
+gossip7D_VO = AR:Sound{ sounds = "Girl2_Ball04_SFX", ..., active = function() return gossip7C_VO.done end }
+```
+
+Câu đầu nhóm là khối duy nhất có `active = false` — nó chỉ bật khi `playGossip` gán tay.
+Mọi câu sau đó có `active` là một closure trả về `.done` của **câu liền trước**. Kiểm cả
+151 closure: 92/92 câu đối đáp đều theo đúng khuôn này, không một ngoại lệ.
+
+Quy tắc đánh số cũng khớp tuyệt đối: **số lẻ luôn là `Girl1`, số chẵn luôn là `Girl2`**,
+92/92 file. Trên đĩa có đúng 92 file `Girl*`, tất cả đều được tham chiếu, không dư file nào.
+
+Nhóm có số câu lẻ (8, 12, 17, 20) kết thúc bằng `Girl1` — vẫn là đối đáp so le, chỉ là
+Girl1 nói câu cuối.
+
+### 8.3 Bảng 21 nhóm đối đáp
+
+| # | Chủ đề | Số câu | Chuỗi file | Tổng | Fader kết | Điều kiện bật fader |
+|---|---|---|---|---|---|---|
+| 1 | `Calc` | 4 | `Girl1_Calc01` → `Girl2_Calc04` | 15.2 s | `gossip1FAdeOut` 3 s, 0.8→0.5 | `gossip1C_VO.done and gossip1D_VO.endTime - 3.0 < Scene.time` |
+| 2 | `Har` | 4 | `Girl1_Har01` → `Girl2_Har04` | 14.3 s | `gossip2FAder` 3 s, **0.7**→0.5 | `gossip2C_VO.done and gossip2D_VO.endTime - 3.0 < Scene.time` |
+| 3 | `Desk` | 2 | `Girl1_Desk01` → `Girl2_Desk02` | 11.6 s | `gossip3FAder` 3 s, 0.8→0.5 | `gossip3_VO.done and gossip3B_VO.endTime - 3.0 < Scene.time` |
+| 4 | `Cof` | 2 | `Girl1_Cof01` → `Girl2_Cof02` | 7.3 s | `gossip4FAder` 2.5 s, 0.8→0.5 | `gossip4_VO.done and gossip4B_VO.endTime - 2.5 < Scene.time` |
+| 5 | `Eng` | 4 | `Girl1_Eng01` → `Girl2_Eng04` | 13.2 s | `gossip5FAder` 3 s, 0.8→0.5 | `gossip5C_VO.done and gossip5D_VO.endTime - 3.0 < Scene.time` |
+| 6 | `Green` | 4 | `Girl1_Green01` → `Girl2_Green04` | 13.0 s | `gossip6FAder` 2.5 s, 0.8→0.5 | `gossip6C_VO.done and gossip6D_VO.endTime - 2.5 < Scene.time` |
+| 7 | `Ball` | 4 | `Girl1_Ball01` → `Girl2_Ball04` | 13.4 s | `gossip7FAder` 3 s, 0.8→0.5 | `gossip7C_VO.done and gossip7D_VO.endTime - 3.0 < Scene.time` |
+| 8 | `Ear` | 5 | `Girl1_Ear01` → `Girl1_Ear05` | 13.5 s | `gossip8FAder` 3 s, 0.8→0.5 | `gossip8D_VO.done and gossip8E_VO.endTime - 3.0 < Scene.time` |
+| 9 | `Who` | 4 | `Girl1_Who01` → `Girl2_Who04` | 17.4 s | `gossip9FAder` 3 s, 0.8→0.5 | `gossip9C_VO.done and gossip9D_VO.endTime - 3.0 < Scene.time` |
+| 10 | `Kick` | 4 | `Girl1_Kick01` → `Girl2_Kick04` | 11.4 s | `gossip10FAder` 2.5 s, 0.8→0.5 | `gossip10C_VO.done and gossip10D_VO.endTime - 2.5 < Scene.time` |
+| 11 | `Page` | 4 | `Girl1_Page01` → `Girl2_Page04` | 17.1 s | `gossip11FAder` 2 s, 0.8→**0.6** | `gossip11C_VO.done and gossip11D_VO.endTime - 2.0 < Scene.time` |
+| 12 | `Lee` | 3 | `Girl1_Lee01` → `Girl1_Lee03` | 15.7 s | `gossip12FAder` 3 s, 0.8→**0.6** | `gossip12B_VO.done and gossip12C_VO.endTime - 3.0 < Scene.time` |
+| 13 | `Char` | 6 | `Girl1_Char01` → `Girl2_Char06` | 20.1 s | `gossip13FAder` 1.9 s, 0.8→0.5 | `gossip13C_VO.done and gossip13D_VO.endTime - 1.9 < Scene.time` ⚠ |
+| 14 | `Rac` | 4 | `Girl1_Rac01` → `Girl2_Rac04` | 16.2 s | `gossip14FAder` 2.5 s, 0.8→0.5 | `gossip14C_VO.done and gossip14D_VO.endTime - 2.5 < Scene.time` |
+| 15 | `Squ` | 6 | `Girl1_Squ01` → `Girl2_Squ06` | 27.9 s | `gossip15FAder` 3 s, 0.8→0.5 | `gossip15E_VO.done and gossip15F_VO.endTime - 3.0 < Scene.time` |
+| 16 | `Goes` | 4 | `Girl1_Goes01` → `Girl2_Goes04` | 29.2 s | `gossip16FAder` 3 s, 0.8→0.5 | `gossip16C_VO.done and gossip16D_VO.endTime - 3.0 < Scene.time` |
+| 17 | `Hate` | 5 | `Girl1_Hate01` → `Girl1_Hate05` | 19.5 s | `gossip17FAder` 3 s, 0.8→**0.6** | `gossip17C_VO.done and gossip17D_VO.endTime - 2.5 < Scene.time` ⚠ |
+| 18 | `Cas` | 4 | `Girl1_Cas01` → `Girl2_Cas04` | 14.3 s | `gossip18FAder` 3 s, 0.8→**0.7** | `gossip18B_VO.done and gossip18C_VO.endTime - 2.5 < Scene.time` ⚠ |
+| 19 | `Fac` | 4 | `Girl1_Fac01` → `Girl2_Fac04` | 17.0 s | `gossip19FAder` 3 s, 0.8→0.5 | `gossip19B_VO.done and gossip19C_VO.endTime - 3.0 < Scene.time` ⚠ |
+| 20 | `Dump` | 9 | `Girl1_Dump01` → `Girl1_Dump09` | 18.7 s | `gossip20FAder` 3 s, 0.8→0.5 | `gossip20H_VO.done and gossip20I_VO.endTime - 3.0 < Scene.time` |
+| 21 | `Id` | 6 | `Girl1_Id01` → `Girl2_Id06` | 16.1 s | `gossip21FAder` 2.8 s, 0.8→0.5 | `gossip21C_VO.done and gossip21D_VO.endTime - 2.8 < Scene.time` ⚠ |
+
+Tổng 92 câu đối đáp = **342.1 giây**. Độ dài từng file đọc từ trường `0x18` của header
+`.HIS` (số byte PCM sau giải nén) chia cho `rate × channels × bits/8` — xem mục 7.
+
+Tên khối của nhóm 1 là `gossip1FAdeOut`, các nhóm khác là `gossip<N>FAder`. Chỉ khác tên,
+không khác hành vi.
+
+### 8.4 Câu lẻ nối sau (Single)
+
+12 trong 21 nhóm có thêm một đoạn độc thoại phát sau khi đối đáp kết thúc. Một `MakeTimer`
+đếm im lặng, hết giờ thì fade kênh lên rồi phát:
+
+| # | Timer | Câu lẻ | Dài | Fade-in | Fade-out |
+|---|---|---|---|---|---|
+| 1 | 5 s sau `gossip1D_VO.done` | `Bliz01_SFX` | 4.28 s | 2 s, 0.5→0.8 | 1.5 s, 0.8→0.5 |
+| 2 | 6 s sau `gossip2D_VO.done` | `Hot01_SFX` → `Doll01_SFX` | 5.88 + 4.89 s | 3 s, 0.5→0.8 | 3 s, 0.8→0.5 |
+| 4 | 7 s sau `gossip4B_VO.done` | `Wig01_SFX` | 4.84 s | 2 s, 0.5→0.8 | 2 s, 0.8→0.5 |
+| 6 | 5 s sau `gossip6D_VO.done` | `Wea01_SFX` | 7.63 s | 2.5 s, 0.5→0.8 | 2.5 s, 0.8→0.5 |
+| 7 | 5 s sau `gossip7D_VO.done` | `Uni01_SFX` | 6.17 s | 3 s, 0.5→0.8 | 3 s, 0.8→0.5 |
+| 8 | 10 s sau `gossip8E_VO.done` | `Per01_SFX` → `Che01_SFX` | 3.46 + 2.43 s | 2 s, 0.5→0.8 | 2 s, 0.8→0.5 |
+| 10 | 10 s sau `gossip10D_VO.done` | `Cos01_SFX` | 5.39 s | 2 s, 0.5→0.8 | 2 s, 0.8→0.5 |
+| 11 | 15 s sau `gossip11D_VO.done` | `Guys01_SFX` | 5.73 s | 2 s, 0.5→0.8 | 2 s, 0.8→0.5 |
+| 14 | 7 s sau `gossip14D_VO.done` | `Gross01_SFX` → `May01_SFX` | 2.87 + 3.65 s | 3 s, 0.5→0.8 | 3 s, 0.8→0.5 |
+| 15 | 5 s sau `gossip15F_VO.done` | `Pig01_SFX` | 5.81 s | 2 s, 0.5→0.8 | 2 s, 0.8→0.5 |
+| 18 | 12 s sau `gossip18D_VO.done` | `Sal01_SFX` | 3.76 s | 1.5 s, 0.5→0.8 | 2 s, 0.8→0.5 |
+| 19 | 5 s sau `gossip19D_VO.done` | `Else01_SFX` | 5.22 s | 1.5 s, 0.5→0.8 | 2 s, 0.8→0.5 |
+| 19 | 7 s sau `Gossip19SingleFadeOut.done` | `Sick01_SFX` | 4.20 s | 1.5 s, 0.5→0.8 | 2 s, 0.8→0.5 |
+
+Hai kiểu "hai câu" khác nhau, đừng lẫn:
+
+- **Nhóm 2, 8, 14** — hai câu dính liền trong *một* khối: `Single2_VO.active` là
+  `Single_VO.done`, chỉ một lần fade lên và một lần fade xuống bọc cả hai.
+- **Nhóm 19** — hai khối *riêng biệt*. `gossip19Single2Timer.active = Gossip19SingleFadeOut.done`,
+  tức đồng hồ thứ hai chỉ bắt đầu sau khi fade-out của câu lẻ thứ nhất chạy xong. Đây là
+  closure duy nhất trong file lấy `.done` của một fader thay vì của một `_VO`.
+
+9 nhóm không có câu lẻ: 3, 5, 9, 12, 13, 16, 17, 20, 21.
+
+### 8.5 Kênh và âm lượng
+
+Có **hai tầng âm lượng** nhân với nhau, đừng gộp làm một:
+
+| Tầng | Đặt ở đâu | Giá trị |
+|---|---|---|
+| Âm lượng từng clip | `volume` trong `AR:Sound` | `0.8` — **cả 108 clip, không clip nào lệch** |
+| Âm lượng kênh | `Sound:SetVolume(SoundChannel.Voice1, …)` do fader gọi | chạy giữa `0.5` và `0.8` |
+
+Kênh: **`SoundChannel.Voice1`**, dùng cho toàn bộ gossip và không dùng cho gì khác trong
+minigame. `s4210` để dành `FX1`/`FX7` cho tiếng thao tác và `PlayerVoice` cho giọng Nancy
+(mục 7), nên gossip không bao giờ cắt tiếng thao tác — chúng nằm trên kênh khác.
+
+Mức nền của `Voice1` là **0.5**: mọi fade-in đều xuất phát từ `startVol = 0.5`, mọi fade-out
+đều kết thúc ở `endVol = 0.5` (trừ mấy ngoại lệ đánh dấu ở mục 8.7).
+
+**Đường cong fade đọc được chính xác**, không phải tuyến tính. `Fader_SC.luac` gọi
+`math.sinlerp`, còn `Math_SC.luac` định nghĩa:
+
+```lua
+math.clamp(a, b, c)   = math.min(math.max(b, a), c)
+math.lerp(a, b, t)    = a + (b - a) * math.clamp(0, t, 1)
+math.sinlerp(a, b, t) = math.lerp(a, b, math.sin(t * math.pi / 2))
+```
+
+Nên công thức đầy đủ, với `t = elapsed / duration`:
+
+```
+vol(t) = startVol + (endVol - startVol) * sin(clamp(t, 0, 1) * pi / 2)
+```
+
+Đây là ease-out: đổi nhanh lúc đầu, chậm dần về cuối.
+
+### 8.6 Phụ đề — KHÔNG CÓ
+
+Hệ phụ đề của game là `autotext_SC.luac`, một bảng `AutotextInit:Create` ánh xạ
+**tên file âm thanh → chuỗi hiển thị**, ví dụ:
+
+```
+Paige09_sfx  ->  <c1>Paige: Hello? Hel-lo?
+Mel04_sfx    ->  <c1>Yeah.
+```
+
+Đã tra cả 108 tên file gossip trong bảng đó: **0 kết quả**. Không có `Girl1_*`, `Girl2_*`,
+cũng không có `Bliz01_SFX`, `Hot01_SFX`, `Wig01_SFX`, … Các khối `AR:Sound` của gossip cũng
+không có trường `text` hay `autotext` nào — chỉ có `sounds`, `channel`, `volume`, `active`.
+
+Đối chiếu: hotspot món ăn trong `s4210` *có* trường `autotext = "UIFOOD01"` (mục 2). Tức là
+engine hoàn toàn hỗ trợ phụ đề ở chỗ này, nhưng gossip cố ý không dùng — nó là tiếng nền,
+không phải thoại có nội dung cần đọc.
+
+**Kết luận: bản dựng lại không cần và không nên hiện phụ đề cho gossip.** Không có chuỗi nào
+để mà lấy.
+
+### 8.7 Bẫy đã gặp
+
+- **Fader kết bật sớm hơn câu cuối ở 5 nhóm.** Đánh dấu ⚠ trong bảng 8.3. Ví dụ nhóm 13 có
+  6 câu nhưng fader kích hoạt theo `gossip13C_VO.done` và `gossip13D_VO.endTime`, nên
+  `Char05` và `Char06` phát khi kênh đã tụt về 0.5. Tương tự nhóm 17 (thừa `Hate05`),
+  18 (thừa `Cas04`), 19 (thừa `Fac04`), 21 (thừa `Id05`, `Id06`).
+  Đây là lỗi soạn của bản gốc, **không phải đọc nhầm bytecode** — giữ nguyên nếu muốn 1:1.
+- **Nhóm 17 và 18: `duration` lệch với mốc trừ lùi.** Fader dài 3.0 s nhưng điều kiện bật là
+  `endTime - 2.5`. Fade chưa xong thì câu đã hết.
+- **Bốn nhóm không về mức nền 0.5.** Nhóm 11, 12, 17 dừng ở 0.6; nhóm 18 dừng ở 0.7. Lần
+  fade-in kế tiếp vẫn đặt `startVol = 0.5`, nên có một cú nhảy âm lượng xuống ngay đầu fade.
+- **Nhóm 2 bắt đầu fade từ 0.7 chứ không phải 0.8.** Cũng là một cú nhảy, ngay khi fader chạy.
+- **Sai chính tả tên file trong bản gốc.** Script gọi `Girl2_Char04_SFX`, trên đĩa file tên là
+  `Girl2_CHar04_SFX.HIS` (chữ `H` hoa). Windows tra tên không phân biệt hoa thường nên game
+  chạy được. Công cụ nào so tên phân biệt hoa thường sẽ trượt đúng file này.
+- **Đừng đọc `consts` để lấy số.** Như mọi chỗ khác, hằng số bị khử trùng lặp — `0.8` xuất hiện
+  một lần trong bảng nhưng được dùng hàng trăm lần. Phải lần theo `SETTABLE` bằng `luatrace.py`.
+
+### 8.8 Cờ `Curfew_FL` chặn thế nào
+
+```lua
+gossipDelay.active = function()
+    return not Flags.Curfew_FL and not teacherRoundTimer.active
+end
+```
+
+Bytecode (`s4210` proto#12, dòng 346):
+
+```
+ 0 GETGLOBAL  Flags
+ 1 GETTABLE   R1 = Flags.Curfew_FL
+ 2 TEST       A=1 C=1        -- Curfew_FL dung  -> nhay toi 8
+ 3 JMP        -> 8
+ 4 GETGLOBAL  teacherRoundTimer
+ 5 GETTABLE   R1 = .active
+ 6 NOT        R1 = not R1
+ 7 JMP        -> 10
+ 8 LOADBOOL   R1 = false
+ 9 LOADBOOL   R1 = true      (bi 8 nhay qua)
+10 RETURN     R1
+```
+
+`TEST` với `C = 1` nhảy khi giá trị **đúng** — nên nhánh `Curfew_FL == true` rơi thẳng vào
+`LOADBOOL false`. Đây là phủ định, không phải điều kiện thuận.
+
+Chặn ở tầng nào: cờ không tắt tiếng, mà **giữ `gossipDelay.active = false`**. Đồng hồ không
+bao giờ chạy → `gossipDelay.done` không bao giờ true → `playGossip` và `fadeInGossip` không
+bao giờ kích hoạt. Không có câu nào phát, kênh `Voice1` nằm im ở 0.5.
+
+`Curfew_FL` là cờ ngày/đêm toàn cục, không phải của minigame. `PhoneData_SC.luac` bật nó
+cùng `Night_FL` khi `Player.time.hours + 1 >= VarTable.CurfewStart`, và tắt qua
+`SetCurfewToFalse_FL`. Có 4 script khác cũng gọi tắt (`s1720a_SC`, `s2050`, `s2055`, `s2090`).
+Hơn 150 chỗ trong game đọc cờ này.
+
+**Vế thứ hai quan trọng không kém:** `not teacherRoundTimer.active`. Khi vòng đơn giáo viên
+được kích (mục 6), `gossipDelay` mất `active`. Nhưng `Timer_SC` khi được bật lại dùng
+`OnActivation` chứ không phải `RunOnce`:
+
+```lua
+OnActivation = function(self) self.endTime = Scene.time + (self.duration - self.time) end
+```
+
+tức là **tạm dừng rồi chạy tiếp**, không đếm lại từ đầu.
+
+### 8.9 `gossipDelay` đếm từ lúc nào, lặp ra sao
+
+**Đếm từ lúc nào.** `math.random(2, 10)` nằm trong thân chunk chính của `s4210`, chạy **một
+lần duy nhất khi nạp scene**. Nó là một số nguyên cố định cho suốt lượt chơi đó, không phải
+sinh lại mỗi chu kỳ.
+
+Mốc bắt đầu đếm nằm ở `RunOnce` của `Timer_SC`:
+
+```lua
+RunOnce = function(self) self.endTime = Scene.time + self.duration end
+```
+
+`RunOnce` chạy ở tick đầu tiên mà `active` trả về true. Vậy đồng hồ bắt đầu từ **thời điểm
+vào scene**, với điều kiện lúc đó `Curfew_FL` tắt và `teacherRoundTimer` chưa chạy. Nếu
+`Curfew_FL` đang bật thì đồng hồ chưa khởi động chút nào.
+
+Cách đếm (`Run`, gọi mỗi frame với `dt`):
+
+```lua
+self.time = self.time + dt
+self.t    = self.time / self.duration
+if self.t >= 1 then self.time = self.duration; self.t = 1; self:Done() end
+```
+
+**Lặp ra sao — câu trả lời ngắn: không lặp.** Mỗi lần vào scene phát đúng một nhóm.
+
+`playGossip` là `RunOnce`, chạy một lần rồi thôi. Không có khối nào đặt `gossipDelay.done`
+về false, không có `OnReset`, không có vòng lặp. Sau khi nhóm `N` chạy hết chuỗi `.done`,
+kênh `Voice1` về 0.5 và im cho tới khi rời scene.
+
+Nhịp thật sự là **theo lần vào scene, không theo thời gian**:
+
+| Lần vào | `VarTable.Gossip` sau `incrementGossip` | Nghe được |
+|---|---|---|
+| 1 | 1 | nhóm 1 (`Calc`) |
+| 2 | 2 | nhóm 2 (`Har`) |
+| … | … | … |
+| 21 | 21 | nhóm 21 (`Id`) |
+| 22 trở đi | 22, 23, … | **im lặng** — `VarTable.Gossip < 22` sai |
+
+Vào scene lần thứ 22 trở đi thì cả `playGossip` lẫn `fadeInGossip` đều không kích hoạt.
+`incrementGossip` vẫn tăng bộ đếm vì nó không bị chặn bởi điều kiện nào.
+
+Vì `VarTable` nằm trong savegame, thứ tự này **liên tục qua các phiên chơi** — không reset
+theo ngày trong game, không reset khi load. Nghe hết 21 nhóm là hết vĩnh viễn.
+
+Rời quầy sau khi lấy chìa khoá hầm thì `s4210` gọi
+`Scene:BeginStream{stream = "GossipFadeStream", scene = "GossipFadeStream_SC"}`.
+Script đó chỉ có một fader: `duration = 3, startVol = 0.6, endVol = 0.0` trên `Voice1` —
+tắt hẳn tiếng tán gẫu trong lúc chuyển cảnh.
+
+---
+
+## 9. Còn thiếu
 
 - 11 mã `UIFOOD` chưa đối chiếu (xem bảng mục 2) — nằm trong `UI_Text_SC` hoặc bảng autotext.
 - Scene `4230` — vòng đơn giáo viên, chưa mổ.
 - Ngưỡng thời gian để đơn giáo viên tính là "nhanh" hay "chậm".
-- Toán tử so sánh trong `startTeacherRound`.
 - Độ thụt lề của dòng nhân sandwich (đo bằng pixel từ ảnh chụp nếu cần chính xác).

@@ -4,11 +4,13 @@ import { FOODS, DUR, POP, TEACHER, MAX_SANDWICH, DISPENSERS, FRIDGE, OVEN,
          TOASTER, TRASH, TRAYS, ORDERS_UI } from './data.js';
 import { makeRound, makeTeacherOrder, findMatch } from './orders.js';
 import { play, playTray, playPick } from './sound.js';
+import * as sound from './sound.js';
 import { startGossip, stopGossip, pauseGossip } from './gossip.js';
 import { inR, rh } from './render.js';
 
 // Tuong duong VarTable cua ban goc: nguong thoi gian nho qua cac phien choi.
 const STORE_KEY = 'snackshop.teacher';
+const SEEN_KEY  = 'snackshop.teacherSeen';   // tuong duong REC_Initialize_FL
 function loadThresholds(){
   try {
     const v = JSON.parse(localStorage.getItem(STORE_KEY));
@@ -18,6 +20,22 @@ function loadThresholds(){
 }
 function saveThresholds(v){
   try { localStorage.setItem(STORE_KEY, JSON.stringify(v)); } catch { /* bo qua */ }
+}
+function seenTeacher(){
+  try { return localStorage.getItem(SEEN_KEY) === '1'; } catch { return false; }
+}
+function markTeacherSeen(){
+  try { localStorage.setItem(SEEN_KEY, '1'); } catch { /* bo qua */ }
+}
+
+/**
+ * Phat mot am roi goi tiep khi no dut. Ban goc chan nhip nhu vay: buzzer dut
+ * moi noi, noi xong moi cong demerit - khong phat chong len nhau.
+ * Neu sound.js chua co playThen thi phat luon va goi tiep ngay, van chay duoc.
+ */
+function playThen(cue, next){
+  if (typeof sound.playThen === 'function') sound.playThen(cue, next);
+  else { play(cue); next && next(); }
 }
 
 export const S = {
@@ -66,13 +84,19 @@ function beginTeacherRound(){
   S.teacher.t = 0;
   S.teacher.buzzed = false;
   pauseGossip(true);            // gossipDelay.active kiem `not teacherRoundTimer.active`
-  play('teacher.bell');
+  const firstTime = !seenTeacher();
+  markTeacherSeen();
+  // lan dau Nancy giai thich luat, cac lan sau chi nhac ngan
+  playThen('teacher.bell',
+           () => play(firstTime ? 'voice.teacherIntroFirst' : 'voice.teacherIntro'));
 }
 
 function endTeacherRound(outcome){
   const T = S.teacher;
   T.phase = 'done';
   pauseGossip(false);
+  S.flash = {ok: outcome !== 'demerit', t:1.6, done:true, teacher:outcome};
+
   if (outcome === 'credit'){
     S.credits++;
     // moi lan thang lui ca hai moc di 1 giay, co san
@@ -80,11 +104,17 @@ function endTeacherRound(outcome){
     T.demerit = Math.max(TEACHER.demeritFloor, T.demerit - 1);
     saveThresholds({credit:T.credit, demerit:T.demerit});
     play('teacher.bell');
-  } else if (outcome === 'demerit'){
-    S.demerits++;
-    play('teacher.fail');
+    return;
   }
-  S.flash = {ok: outcome !== 'demerit', t:1.6, done:true, teacher:outcome};
+
+  if (outcome === 'none'){          // xong nhung cham - khong thuong khong phat
+    play('voice.teacherFaster');
+    return;
+  }
+
+  // thua: buzzer dut -> Nancy noi -> luc do moi cong demerit
+  playThen('teacher.fail',
+           () => playThen('voice.teacherDemerit', () => { S.demerits++; }));
 }
 
 export function tryPickUp(ti){
@@ -96,8 +126,6 @@ export function tryPickUp(ti){
     tray.sandwich = []; tray.slots = {};
     tray.vacantT = DUR.trayVacant;        // cho trong truoc khi khay moi toi
     S.flash = {ok:true, t:0.8};
-    // Cung khoanh khac dua khay di, nhung s4231 dung bo am khac han s4210 -
-    // xem `teacher.trayAway` trong sound.js.
     play(S.teacher.phase === 'active' ? 'teacher.trayAway' : 'tray.away');
 
     if (S.teacher.phase === 'active'){

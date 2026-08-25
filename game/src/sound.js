@@ -162,6 +162,18 @@ export const CUES = {
   'voice.wrong':   {ch:'PlayerVoice', vol:null,
                     files:['nwa103','nwa104','nwa105','nwa106']},
   'voice.allDone': {ch:'PlayerVoice', vol:null, files:['nd_alldone01']},
+  // Vong giao vien (spec muc 9.6). Ca bon khoi AR:Sound trong s4230/s4233/s4234
+  // chi co `sounds` va `channel` - da doc lai bytecode, khong khoi nao dat
+  // `volume`, nen vol:null chu khong phai chua tra ra.
+  // 146 la lan dau (Nancy giai thich luat), 147 la cac lan sau. Ban goc phan
+  // biet bang Flags.Heard_Teacher_Snack_Instructions_FL, ben nay bang localStorage.
+  'voice.teacherIntroFirst': {ch:'PlayerVoice', vol:null, files:['nwa146']},
+  'voice.teacherIntro':      {ch:'PlayerVoice', vol:null, files:['nwa147']},
+  // Hoa: "toi cham qua". Thua: "mot demerit".
+  'voice.teacherFaster':     {ch:'PlayerVoice', vol:null,
+                              files:['nwa132a','nwa132b','nwa132c']},
+  'voice.teacherDemerit':    {ch:'PlayerVoice', vol:null,
+                              files:['nwa133a','nwa133b','nwa133c']},
 };
 
 let ctx = null;
@@ -251,14 +263,17 @@ export async function loadBuffer(name){
 /**
  * Phat mot su kien. Am dang chay tren cung kenh se bi cat, giong ban goc.
  * Su kien chua co file thi lang le bo qua.
+ *
+ * Tra ve BufferSource dang chay, hoac null neu khong phat duoc gi (cue rong,
+ * chua nap, tat tieng). `playThen` dua vao gia tri tra ve nay.
  */
 export function play(cue){
   const def = CUES[cue];
-  if (!def){ console.warn('[sound] khong co su kien:', cue); return; }
-  if (!enabled || !ctx || !def.files.length) return;
+  if (!def){ console.warn('[sound] khong co su kien:', cue); return null; }
+  if (!enabled || !ctx || !def.files.length) return null;
 
   const buf = buffers.get(def.files[Math.floor(Math.random() * def.files.length)]);
-  if (!buf) return;
+  if (!buf) return null;
 
   const old = playing.get(def.ch);          // cat am cu tren cung kenh
   if (old){ try { old.stop(); } catch { /* da dung */ } }
@@ -271,6 +286,27 @@ export function play(cue){
   src.onended = () => { if (playing.get(def.ch) === src) playing.delete(def.ch); };
   playing.set(def.ch, src);
   src.start();
+  return src;
+}
+
+/**
+ * Phat mot su kien roi goi `done` khi am dut. Ban goc chan nhip bang cach nay:
+ * s4234 doi buzzer dut moi cho Nancy noi (`notDoneInTimeVO.active =
+ * demeritsBuzzerSFX.done`), noi xong moi cong demerit. Xem spec muc 9.6.
+ *
+ * KHONG BAO GIO bo roi `done`. Cue rong, file hong, trinh duyet khong co Web
+ * Audio, hay dang tat tieng - deu goi ngay tai cho. Mat tieng thi chap nhan
+ * duoc, dut chuoi thi vong giao vien treo o giua.
+ *
+ * Bi mot cue khac tren cung kenh cat ngang cung tinh la dut: `stop()` van ban
+ * 'ended'. Dung hon la doi mai mot am da bi cat.
+ */
+export function playThen(cue, done){
+  const src = play(cue);
+  if (!src){ done?.(); return; }
+  // addEventListener chu khong gan `src.onended`: play() da dung onended de don
+  // `playing`, ghi de len la kenh do khong bao gio duoc xoa.
+  src.addEventListener('ended', () => done?.(), {once:true});
 }
 
 /** Nhat hoac dat mot mon tren khay. cat = drink|fruit|dessert|side|sandwich */

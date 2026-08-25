@@ -6,15 +6,39 @@
   html,body{margin:0;height:100%;background:#111;display:grid;place-items:center;
             font-family:Georgia,'Times New Roman',serif;color:#ddd}
   #wrap{position:relative}
-  canvas{display:block;cursor:none;background:#000}
+  canvas{display:block;cursor:none;background:#000;touch-action:none}
   canvas.sharp{image-rendering:pixelated}
-  #hint{position:absolute;left:0;right:0;bottom:-28px;text-align:center;
-        font-size:13px;color:#888}
+  #hint{position:absolute;left:0;right:0;bottom:-30px;text-align:center;
+        font-size:12px;color:#7a7a7a;min-height:16px}
+  #keys{display:flex;flex-wrap:wrap;gap:8px 18px;justify-content:center;
+        margin-top:52px;font-size:12px;color:#8d8d8d}
+  #keys span{display:inline-flex;align-items:center;gap:6px}
+  kbd{display:inline-block;min-width:19px;padding:2px 6px;text-align:center;
+      font:600 11px/1.4 ui-monospace,Consolas,monospace;color:#e8e8e8;
+      background:linear-gradient(#3a3a3a,#2b2b2b);border:1px solid #4a4a4a;
+      border-bottom-width:2px;border-radius:4px;
+      box-shadow:0 1px 0 rgba(0,0,0,.5)}
+  /* Thanh diem nam NGOAI khung 640x400 - trong khung la art goc, khong ve de len */
+  #stats{display:flex;gap:22px;justify-content:center;margin-top:16px;
+         font-size:13px;color:#9a9a9a;letter-spacing:.02em}
+  #stats b{color:#e0e0e0;font-weight:normal}
+  #stats .ach{color:#c8a24a}
 </style>
 
 <div id="wrap">
   <canvas id="c" width="640" height="400"></canvas>
-  <div id="hint">Chuột trái nhặt và đặt · chuột phải bỏ món đang cầm · lăn để cuộn đơn · R vòng mới · D khung bấm · S đổi độ nét · M tắt tiếng</div>
+  <div id="keys">
+    <span><kbd>Chuột trái</kbd> nhặt và đặt</span>
+    <span><kbd>Chuột phải</kbd> bỏ món đang cầm</span>
+    <span><kbd>Lăn</kbd> cuộn danh sách đơn</span>
+    <span><kbd>R</kbd> vòng mới</span>
+    <span><kbd>D</kbd> khung bấm</span>
+    <span><kbd>S</kbd> độ nét</span>
+    <span><kbd>M</kbd> tắt tiếng</span>
+    <span><kbd>T</kbd> tự kiểm</span>
+  </div>
+  <div id="stats"></div>
+  <div id="hint"></div>
 </div>
 
 <script type="module" src="src/main.js"></script>

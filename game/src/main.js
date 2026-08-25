@@ -2,8 +2,11 @@
 
 import { W, H } from './data.js';
 import { initRender, draw } from './render.js';
-import { S, newRound, click, scrollOrders, tick } from './state.js';
+import { S, newRound, click, scrollOrders, tick,
+         moveScrollDrag, endScrollDrag, isScrollDragging } from './state.js';
 import { initSound, toggleMute, getVolume } from './sound.js';
+import { onStatsChange, activeDemerits, hasCookAchievement } from './stats.js';
+import { runSelfCheck, summarise } from './selfcheck.js';
 
 const cv = document.getElementById('c');
 const cx = cv.getContext('2d');
@@ -17,12 +20,21 @@ function toCanvas(e){
   return [(e.clientX - r.left) * W / r.width, (e.clientY - r.top) * H / r.height];
 }
 
-cv.addEventListener('mousemove', e => { [S.mouse.x, S.mouse.y] = toCanvas(e); });
-cv.addEventListener('mousedown', e => {
+// Pointer event thay cho mouse event: chay duoc ca chuot lan cam ung.
+cv.addEventListener('pointermove', e => {
+  [S.mouse.x, S.mouse.y] = toCanvas(e);
+  if (isScrollDragging()) moveScrollDrag(S.mouse.y);
+});
+addEventListener('pointerup', endScrollDrag);
+addEventListener('pointercancel', endScrollDrag);
+cv.addEventListener('pointerdown', e => {
   initSound();                                    // trinh duyet chi cho phat sau cu bam dau
+  // Cam ung khong co hover: phai cap nhat vi tri TRUOC khi xu ly bam,
+  // neu khong thi cu cham dau tien se tinh vao cho con tro dang o cu.
+  [S.mouse.x, S.mouse.y] = toCanvas(e);
   if (e.button === 2){ S.held = null; return; }   // chuot phai: bo mon dang cam
   if (e.button !== 0) return;
-  click(...toCanvas(e));
+  click(S.mouse.x, S.mouse.y);
 });
 cv.addEventListener('contextmenu', e => e.preventDefault());
 cv.addEventListener('wheel', e => { e.preventDefault(); scrollOrders(Math.sign(e.deltaY)); },
@@ -33,7 +45,31 @@ addEventListener('keydown', e => {
   if (k === 'r') newRound();
   if (k === 'd') S.debug = !S.debug;
   if (k === 's') cv.classList.toggle('sharp');
-  if (k === 'm'){ toggleMute(); hint.textContent = getVolume() ? 'Âm thanh: bật' : 'Âm thanh: tắt'; }
+  if (k === 'm'){
+    toggleMute();
+    hint.textContent = getVolume() ? 'Âm thanh: bật' : 'Âm thanh: tắt';
+    setTimeout(() => { if (hint.textContent.startsWith('Âm thanh')) hint.textContent = ''; }, 1800);
+  }
+  if (k === 't'){
+    hint.textContent = summarise(null);
+    runSelfCheck().then(r => { hint.textContent = summarise(r); });
+  }
+});
+
+// Thanh diem duoi canvas. Cap nhat moi khi stats doi.
+const statsEl = document.getElementById('stats');
+onStatsChange(st => {
+  const parts = [
+    `Vòng đã xong <b>${st.rounds}</b>`,
+    `Credit <b>${st.credits}</b>`,
+    `Demerit <b>${st.demerits}</b>`,
+  ];
+  if (st.teacherWins || st.teacherLosses)
+    parts.push(`Đơn giáo viên <b>${st.teacherWins}</b>&#8202;/&#8202;<b>${st.teacherWins + st.teacherLosses}</b>`);
+  const active = activeDemerits();
+  if (active > 0) parts.push(`Đang nợ <b>${active}</b>`);
+  if (hasCookAchievement()) parts.push(`<span class="ach">Short Order Cook</span>`);
+  statsEl.innerHTML = parts.join('');
 });
 
 function fitCanvas(){

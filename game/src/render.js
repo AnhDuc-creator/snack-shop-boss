@@ -3,7 +3,7 @@
 import { W, H, FOODS, FRIDGE, OVEN, TOASTER, TRASH, TRAYS, ORDERS_UI,
          DISPENSERS, BACK_HS } from './data.js';
 import { orderLines } from './orders.js';
-import { S } from './state.js';
+import { S, scrollBarRect } from './state.js';
 import { TEACHER } from './data.js';
 
 export const inR = (r,x,y) => x>=r[0] && x<r[2] && y>=r[1] && y<r[3];
@@ -26,6 +26,29 @@ export function foodSrc(name, side, half){
   const f = FOODS[name];
   if (f.bun) return f[(side==='left'?'left':'right') + (half==='down'?'Down':'Up')];
   return side==='left' ? f.left : f.right;
+}
+
+/**
+ * Khi dang cam mon, to sang o nhan mon do tren ca hai khay.
+ * Ban goc khong co - them vao vi nguoi choi khong the nho o nao nhan gi.
+ * Chi hien luc dang cam, buong ra la bien mat, nen khong che art luc binh thuong.
+ */
+function drawSlotHint(){
+  const f = FOODS[S.held];
+  if (!f || !f.cat) return;
+  const pulse = 0.30 + 0.16 * Math.sin(performance.now() / 260);
+  for (let i = 0; i < 2; i++){
+    if (S.trays[i].vacantT > 0) continue;
+    const slot = TRAYS[i].slots[f.cat];
+    if (!slot) continue;
+    cx.save();
+    cx.strokeStyle = `rgba(255,232,150,${pulse + 0.25})`;
+    cx.fillStyle   = `rgba(255,232,150,${pulse * 0.30})`;
+    cx.lineWidth = 1.5;
+    cx.fillRect(slot[0], slot[1], rw(slot), rh(slot));
+    cx.strokeRect(slot[0] + .5, slot[1] + .5, rw(slot) - 1, rh(slot) - 1);
+    cx.restore();
+  }
 }
 
 export function drawTray(tray, ti){
@@ -64,8 +87,9 @@ export function drawTray(tray, ti){
 export function drawOrders(){
   const a = ORDERS_UI.area, lh = ORDERS_UI.textHeight;
   const padL = 6, padT = 3;
+  const padR = ORDERS_UI.bar.width + ORDERS_UI.bar.margin * 2;
   cx.save();
-  cx.beginPath(); cx.rect(a[0], a[1], rw(a), rh(a)); cx.clip();
+  cx.beginPath(); cx.rect(a[0], a[1], rw(a) - padR, rh(a)); cx.clip();
   cx.font = '11px Georgia, serif';
   cx.textBaseline = 'alphabetic';
   cx.fillStyle = '#111';
@@ -84,7 +108,19 @@ export function drawOrders(){
   S.contentH = y + S.scroll - a[1];
   cx.restore();
 
+  drawScrollBar();
   if (S.teacher.phase === 'active') drawTeacherTimer(a);
+}
+
+// CO Y LECH BAN GOC: ban goc khong co thanh cuon, chi cuon tu dong khi re chuot
+// len mep khung. Choi thu thay phien nen doi sang thanh cuon + con lan.
+function drawScrollBar(){
+  const b = scrollBarRect();
+  if (!b) return;
+  cx.fillStyle = 'rgba(20,40,60,.25)';
+  cx.fillRect(b.track[0], b.track[1], rw(b.track), rh(b.track));
+  cx.fillStyle = 'rgba(30,60,90,.75)';
+  cx.fillRect(b.thumb[0], b.thumb[1], rw(b.thumb), rh(b.thumb));
 }
 
 /**
@@ -119,7 +155,7 @@ export function drawDebug(){
     const T = S.teacher;
     cx.fillText(`teacher ${T.phase} t=${T.t.toFixed(1)} credit<=${T.credit} demerit>=${T.demerit}`,
                 4, 4);
-    cx.fillText(`credits=${S.credits} demerits=${S.demerits}`, 4, 15);
+    cx.fillText(`(diem hien o thanh duoi canvas)`, 4, 15);
   }
 
   for (const [n,r] of boxes){
@@ -137,13 +173,13 @@ export function draw(){
   if (S.fridgeOpen) blitTo(FRIDGE.source, FRIDGE.onScreen);
 
   // lo
-  const ov = S.oven.state;
   // Atlas chi co hai lop phu: lo mo co bot song, va lo mo co cookie chin.
-  // Lo mo nhung rong thi khong ve gi - nen truoc day ve nham thanh cookie vinh cuu.
+  // Khong co lop "mo ma rong" - vi ban goc khong co trang thai do.
+  const ov = S.oven.state;
   if (ov === 'openUnbaked') blitTo(OVEN.unbaked, OVEN.onScreen);
   if (ov === 'openBaked')   blitTo(OVEN.baked,   OVEN.onScreen);
-  blitTo(ov === 'closedBaked' || ov === 'openBaked' ? OVEN.greenSrc : OVEN.redSrc,
-         ov === 'closedBaked' || ov === 'openBaked' ? OVEN.greenOn  : OVEN.redOn);
+  const done = ov === 'closedBaked' || ov === 'openBaked';
+  blitTo(done ? OVEN.greenSrc : OVEN.redSrc, done ? OVEN.greenOn : OVEN.redOn);
 
   // may nuong
   const tt = S.toaster;
@@ -157,6 +193,7 @@ export function draw(){
   }
 
   S.trays.forEach(drawTray);
+  if (S.held) drawSlotHint();
   drawOrders();
 
   if (S.flash && S.flash.t > 0){

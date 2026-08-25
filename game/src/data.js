@@ -124,6 +124,11 @@ export const ORDERS_UI = {
   // Vung re chuot de cuon tu dong. Toc do tang dan tu minSpeed toi maxSpeed.
   upHs:[499,0,640,50], downHs:[499,108,640,158],
   minSpeed:0, maxSpeed:250, catchUpFactor:0.25,
+  // CO Y LECH BAN GOC: ban goc chi co cuon tu dong khi re chuot len mep, khong
+  // co thanh cuon. Choi thu thay phien vi chuot di ngang qua la danh sach chay.
+  // Doi AUTO_SCROLL thanh true de tro ve dung ban goc.
+  autoScroll:false,
+  bar:{width:5, margin:2, minThumb:14},
 };
 
 export const BACK_HS = [207,365,502,399];

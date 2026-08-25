@@ -4,7 +4,7 @@ Ngữ cảnh dự án cho Claude Code. Đọc file này trước khi sửa bất
 
 ## Dự án này là gì
 
-Dựng lại 1:1 minigame quầy đồ ăn vặt trong _Nancy Drew #21: Warnings at Waverly Academy_
+Dựng lại 1:1 minigame quầy đồ ăn vặt trong *Nancy Drew #21: Warnings at Waverly Academy*
 (Her Interactive, 2009), chạy trên trình duyệt bằng HTML5 Canvas.
 
 Điểm khác biệt so với một clone thông thường: **mọi con số đều lấy từ bản gốc**, đọc ngược
@@ -16,10 +16,14 @@ từ bytecode Lua 5.1 trong `Ciftree.dat`. Không ước lượng, không "cho n
 Mọi hằng số trong `game/src/data.js` đều phải truy được về một dòng trong spec. Muốn đổi
 một con số thì phải có bằng chứng mới từ bản gốc, và phải cập nhật spec cùng lúc.
 
-**2. Không bao giờ commit asset.**
-`extracted/` và `game/assets/` chứa tài sản của Her Interactive. Chúng đã nằm trong
-`.gitignore` từ commit đầu tiên. Nếu thấy chúng xuất hiện trong `git status`, dừng lại
-và sửa `.gitignore` trước khi làm gì khác.
+**2. `extracted/` không bao giờ vào git. `game/assets/` thì có.**
+`extracted/` là bản giải nén đầy đủ, hàng GB, và sinh lại được — không có lý do gì đưa
+lên. Riêng `game/assets/` chứa đúng phần asset game cần và **đã được Her Interactive cho
+phép phát hành** cho cộng đồng người hâm mộ, nên commit bình thường. Xem mục Bản quyền
+trong `README.md`.
+
+Kèm theo đó: phần ghi nguồn trong `README.md` là bắt buộc, đừng gỡ. Nếu thêm asset mới
+vào `game/assets/`, kiểm lại xem nó có nằm trong phạm vi được phép không.
 
 **3. Không bao giờ ghi vào thư mục game gốc.**
 Mọi công cụ chỉ đọc. `tools/setup.py` dùng `OpenRead`, không mở chế độ ghi.
@@ -101,6 +105,16 @@ Dự án này thay thế hoàn toàn thư mục khảo cổ ban đầu (`nancy-w
 cần giữ lại: tài liệu đã thành `docs/spec.md`, script đã thành `tools/`, mẫu file đã nằm
 trong `research/`, còn kết quả giải nén thì `tools/setup.py` sinh lại trong khoảng một phút.
 Xoá được cả thư mục.
+
+## Bẫy đã gặp trong chính code này
+
+- `initSound()` từng dùng `if (buffers.size) return` làm cờ "đã nạp xong". Vì `loadBuffer`
+  dùng chung `buffers`, chỉ một clip gossip nạp lười vào trước là toàn bộ bảng `CUES` bị
+  bỏ qua — mất hết tiếng thao tác mà không báo lỗi. Bài học: đừng suy ra trạng thái từ
+  một cấu trúc dữ liệu dùng chung, hãy giữ cờ riêng.
+- `sound_assets.py` ban đầu chỉ đọc `s4210.luac` nên thiếu đúng một phần ba số âm — phần
+  gossip nằm trong `GossipVOs_SC` được nạp qua `Scene:Include`. Khi quét bytecode, nhớ đi
+  theo cả `Include`.
 
 ## Lần chạy đầu tiên
 

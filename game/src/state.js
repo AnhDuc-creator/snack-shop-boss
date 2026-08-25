@@ -1,11 +1,24 @@
 // Trang thai game va toan bo tuong tac. Khong ve gi.
 
-import { FOODS, DUR, POP, MAX_SANDWICH, DISPENSERS, FRIDGE, OVEN,
+import { FOODS, DUR, POP, TEACHER, MAX_SANDWICH, DISPENSERS, FRIDGE, OVEN,
          TOASTER, TRASH, TRAYS, ORDERS_UI } from './data.js';
-import { makeRound, findMatch } from './orders.js';
+import { makeRound, makeTeacherOrder, findMatch } from './orders.js';
 import { play, playTray, playPick } from './sound.js';
-import { startGossip, stopGossip } from './gossip.js';
+import { startGossip, stopGossip, pauseGossip } from './gossip.js';
 import { inR, rh } from './render.js';
+
+// Tuong duong VarTable cua ban goc: nguong thoi gian nho qua cac phien choi.
+const STORE_KEY = 'snackshop.teacher';
+function loadThresholds(){
+  try {
+    const v = JSON.parse(localStorage.getItem(STORE_KEY));
+    if (v && typeof v.credit === 'number' && typeof v.demerit === 'number') return v;
+  } catch { /* khong doc duoc thi dung mac dinh */ }
+  return {credit: TEACHER.creditTime0, demerit: TEACHER.demeritTime0};
+}
+function saveThresholds(v){
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(v)); } catch { /* bo qua */ }
+}
 
 export const S = {
   orders:[], scroll:0, scrollVel:0, contentH:0, held:null,
@@ -14,6 +27,8 @@ export const S = {
   toaster:{state:'empty', food:null, count:0, t:0, frame:0},
   trays:[ {sandwich:[], slots:{}, vacantT:0}, {sandwich:[], slots:{}, vacantT:0} ],
   mouse:{x:320,y:200}, debug:false, flash:null, round:0,
+  credits:0, demerits:0,
+  teacher:{phase:'none', t:0, wait:0, buzzed:false, ...loadThresholds()},
 };
 
 export function newRound(){
@@ -23,8 +38,53 @@ export function newRound(){
   S.oven = {state:'closedEmpty', dough:false, t:0};
   S.toaster = {state:'empty', food:null, count:0, t:0, frame:0};
   S.round++;
+  S.teacher.phase = 'none';
+  S.teacher.t = 0;
+  pauseGossip(false);
   stopGossip();
   startGossip();          // moi vong don = mot lan "vao scene" o ban goc
+}
+
+/** Sau moi vong hoc sinh, 1/4 kha nang giao vien den dat don. */
+function maybeStartTeacher(){
+  if (Math.floor(Math.random()*TEACHER.chanceOneIn) + 1 !== 2) return;
+  S.teacher.phase = 'pending';
+  S.teacher.wait  = TEACHER.delayMin + Math.random()*(TEACHER.delayMax - TEACHER.delayMin);
+}
+
+/**
+ * Ban goc khong co ma nao xoa don hoc sinh - s4210 va s4231 la hai scene khac
+ * nhau, roi scene la ca khoi bien mat. Nen o day dung lai quay tu so 0.
+ */
+function beginTeacherRound(){
+  S.orders = [makeTeacherOrder()];
+  S.scroll = 0; S.held = null;
+  S.trays.forEach(t => { t.sandwich = []; t.slots = {}; t.vacantT = 0; });
+  S.oven = {state:'closedEmpty', dough:false, t:0};
+  S.toaster = {state:'empty', food:null, count:0, t:0, frame:0};
+  S.teacher.phase = 'active';
+  S.teacher.t = 0;
+  S.teacher.buzzed = false;
+  pauseGossip(true);            // gossipDelay.active kiem `not teacherRoundTimer.active`
+  play('teacher.bell');
+}
+
+function endTeacherRound(outcome){
+  const T = S.teacher;
+  T.phase = 'done';
+  pauseGossip(false);
+  if (outcome === 'credit'){
+    S.credits++;
+    // moi lan thang lui ca hai moc di 1 giay, co san
+    T.credit  = Math.max(TEACHER.creditFloor,  T.credit  - 1);
+    T.demerit = Math.max(TEACHER.demeritFloor, T.demerit - 1);
+    saveThresholds({credit:T.credit, demerit:T.demerit});
+    play('teacher.bell');
+  } else if (outcome === 'demerit'){
+    S.demerits++;
+    play('teacher.fail');
+  }
+  S.flash = {ok: outcome !== 'demerit', t:1.6, done:true, teacher:outcome};
 }
 
 export function tryPickUp(ti){
@@ -36,9 +96,22 @@ export function tryPickUp(ti){
     tray.sandwich = []; tray.slots = {};
     tray.vacantT = DUR.trayVacant;        // cho trong truoc khi khay moi toi
     S.flash = {ok:true, t:0.8};
-    play('tray.away');
-    if (S.orders.every(o => o.filled)){ S.flash = {ok:true, t:1.6, done:true}; play('voice.allDone'); }
-    else play('voice.correct');
+    // Cung khoanh khac dua khay di, nhung s4231 dung bo am khac han s4210 -
+    // xem `teacher.trayAway` trong sound.js.
+    play(S.teacher.phase === 'active' ? 'teacher.trayAway' : 'tray.away');
+
+    if (S.teacher.phase === 'active'){
+      const t = S.teacher.t;
+      // <= creditTime: duoc credit.  giua hai moc: khong thuong khong phat.
+      endTeacherRound(t <= S.teacher.credit ? 'credit' : 'none');
+      return;
+    }
+
+    if (S.orders.every(o => o.filled)){
+      S.flash = {ok:true, t:1.6, done:true};
+      play('voice.allDone');
+      maybeStartTeacher();
+    } else play('voice.correct');
   } else if (Object.keys(tray.slots).length || tray.sandwich.length){
     S.flash = {ok:false, t:0.8};
     play('voice.wrong');
@@ -184,6 +257,18 @@ function updateAutoScroll(dt){
 // Cap nhat cac bo dem thoi gian
 export function tick(dt){
   updateAutoScroll(dt);
+
+  const T = S.teacher;
+  if (T.phase === 'pending'){
+    T.wait -= dt;
+    if (T.wait <= 0) beginTeacherRound();
+  } else if (T.phase === 'active'){
+    T.t += dt;
+    if (!T.buzzed && T.t >= T.credit){    // mat cua credit - keu dung mot lan
+      T.buzzed = true; play('teacher.buzz');
+    }
+    if (T.t >= T.demerit) endTeacherRound('demerit');   // het gio la thua, ke ca dang lam do
+  }
 
   for (const tray of S.trays){
     if (tray.vacantT <= 0) continue;

@@ -12,7 +12,8 @@
 //    khoi khay. Cung `Fabric_PlaceShort01..03` co ba muc tuy cho. Vi vay bang tra
 //    duoi day khoa theo CHO + HANH DONG, khong khoa theo ten file hay nhom mon.
 //
-// Du lieu trong CUES sinh tu bytecode - xem docs/spec.md muc 7.
+// Du lieu trong CUES sinh tu bytecode - xem docs/spec.md muc 7 (vong thuong)
+// va muc 9.6 (vong giao vien).
 
 const DIR = 'assets/sound/';
 
@@ -138,6 +139,22 @@ export const CUES = {
   'tray.sandwich.place': {ch:'FX7', vol:0.55,
                           files:['fabric_placeshort01','fabric_placeshort02',
                                  'fabric_placeshort03']},
+
+  // --- vong giao vien (spec muc 9.6) ---
+  // Chuong ban giao vien. Dung mot bo cho ca hai dau vong: s4230 reo bao co don,
+  // s4232 reo mung thang. FX1 - cung kenh voi tieng nhat nguyen lieu o quay.
+  'teacher.bell': {ch:'FX1', vol:null, files:['bell_desk01','bell_desk02']},
+  // Bip mot lan tai moc credit neu luc do chua nop xong (s4231 noCreditBusserSFX).
+  // FX6 la kenh khay, khong phai kenh rieng: bip dung luc khay dang keu thi cat
+  // tieng khay. Ban goc dat vay, giu nguyen.
+  'teacher.buzz': {ch:'FX6', vol:0.65, files:['buzzer01_short']},
+  // Het gio -> s4234. Buzzer_Double nam tren FX1, khong phai FX6 nhu buzz tren.
+  'teacher.fail': {ch:'FX1', vol:null, files:['buzzer_double']},
+  // CAN cue rieng, khong gop duoc vao `tray.away`: van la goodMatchSounds phan tu
+  // 2, van la luc dua khay di, nhung s4231 doi ca file lan am luong - giao vien
+  // nhan do nghe tieng giay mo 0.75, hoc sinh nghe tieng tui giay khong dat vol.
+  // Cung kenh FX6 nen hai cue tu loai tru nhau, khong bao gio chong tieng.
+  'teacher.trayAway': {ch:'FX6', vol:0.75, files:['paperunfold01','paperunfold10']},
 
   // --- giong Nancy (PlayerVoice) ---
   'voice.correct': {ch:'PlayerVoice', vol:null,

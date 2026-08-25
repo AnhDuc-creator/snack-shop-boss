@@ -41,6 +41,27 @@ export function makeOrder(){
   return {parts, filled:false};
 }
 
+// Don giao vien. Khac don hoc sinh dung ba cho, phan con lai giong het:
+//   - luon MOT don (khong phai 3-6)
+//   - luon du CA NAM nhom (khong phai 3-5)
+//   - sandwich 6-8 nhan (khong phai 1-4)
+// Do kho nam o day chu khong phai o dong ho chay nhanh hon.
+export function makeTeacherOrder(){
+  const chosen = shuffle(CATS);          // ca 5 nhom, thu tu ngau nhien
+  const parts = [];
+  for (const cat of chosen){
+    if (cat === 'sandwich'){
+      const bun = pick(BUNS);
+      const fills = [];
+      for (let i = rnd(6,8); i > 0; i--) fills.push(pick(FILLINGS));
+      parts.push({cat:'sandwich', stack:[bun, ...fills, bun]});
+    } else {
+      parts.push({cat, food: pick(BY_CAT[cat])});
+    }
+  }
+  return {parts, filled:false, teacher:true};
+}
+
 export function makeRound(){
   const n = orderCount();
   return Array.from({length:n}, makeOrder);

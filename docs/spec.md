@@ -282,6 +282,8 @@ phải một khoảng.
 
 `gossipDelay` — hẹn giờ phát lời tán gẫu của khách — xem mục 8.
 
+Phần còn lại của vòng giáo viên — scene 4230 tới 4234, ngưỡng thời gian, thưởng phạt — ở mục 9.
+
 ---
 
 ## 7. Phản hồi, âm thanh và biến đếm
@@ -368,7 +370,7 @@ cú bấm bỏ bột (`openHs` nhận `heldFood` rồi chuyển sang `openUnbake
 
 | Ngữ cảnh | Khe | File |
 |---|---|---|
-| Đưa khay đi | — | `PaperBagShake01..05_sfx` |
+| Đưa khay đi | `goodMatchSounds` (phần tử 2) | `PaperBagShake01..05_sfx` |
 | Khay mới tới | `replaceSound` | `Object_Place01..03_SFX` |
 
 `Object_Place01..03` nằm trên **FX6**, không phải kênh giọng nói — nó là tiếng khay mới
@@ -388,7 +390,7 @@ cú bấm bỏ bột (`openHs` nhận `heldFood` rồi chuyển sang `openUnbake
 
 | Ngữ cảnh | Khe | File |
 |---|---|---|
-| Khớp đúng | `goodMatchSounds` | `NWA056a..d_sfx` |
+| Khớp đúng | `goodMatchSounds` (phần tử 1) | `NWA056a..d_sfx` |
 | Khớp sai | `badMatchSound` | `NWA103..106_sfx` |
 | Xong cả vòng (`allDoneVO`) | `endRound` | `ND_AllDone01_SFX` |
 
@@ -404,8 +406,11 @@ khi giải nén. Trường `0x1C` là codec:
   xảy ra từ lúc Her Interactive đóng gói.
 
 Trong 86 âm minigame dùng: **46 file codec 1** (`.wav`) và **40 file codec 2** (`.ogg`).
+Cộng thêm 108 clip tán gẫu (mục 8) và 14 âm vòng giáo viên (mục 9.6) thì tổng là **208 file**
+— phần thêm vào đều là codec 2, nên số `.wav` vẫn đứng yên ở 46.
 `tools/sound_assets.py` tự đọc danh sách cần từ bytecode rồi xuất ra `game/assets/sound/`,
-đặt tên viết thường và bỏ hậu tố `_SFX`. `tools/setup.py` gọi nó ở bước 3.
+đặt tên viết thường và bỏ hậu tố `_SFX`. Nó xuất phát từ sáu scene (`s4210` và `s4230`–`s4234`)
+vì năm scene vòng giáo viên nối nhau bằng `AR:NavLogic`, không phải `Scene:Include`. `tools/setup.py` gọi nó ở bước 3.
 
 ---
 
@@ -713,9 +718,310 @@ tắt hẳn tiếng tán gẫu trong lúc chuyển cảnh.
 
 ---
 
-## 9. Còn thiếu
+## 9. Vòng đơn giáo viên — bên trong (scene 4230 → 4234)
+
+Mục 6 nói về phía `s4210`: khi nào vòng giáo viên được kích. Mục này mổ phần còn lại —
+năm scene rời nhau, mỗi scene một file `.luac`.
+
+```
+s4210  teacherRoundTimer.done
+   |
+   v
+s4230  chuong reo + Nancy noi          (khong Include gi)
+   |   TeacherRoundDelay 0.3 giay
+   v
+s4231  van dau that                    (Include Cooking_SC)
+   |   teacherRoundTimer = VarTable.TeacherOrderDemeritTime
+   |
+   +-- xong, t <= CreditTime -----> s4232  THUONG 1 credit   (Include Demerits_SC)
+   +-- xong, Credit < t < Demerit -> s4233  hoa, khong gi ca
+   +-- t >= DemeritTime ----------> s4234  PHAT 1 demerit    (Include Demerits_SC,
+   |                                                          ScriptingShortcuts_SC)
+   v
+SnackShop_Exit_SC -> scene 4200 frame 2
+```
+
+`s4231` **không có nav thoát**. Đọc toàn bộ global mà nó tham chiếu chỉ ra sáu cái:
+`math`, `pairs`, `puzzle`, `specialOrders`, `table`, `teacherRoundTimer`. Không có nút back,
+không có hotspot rời quầy. Vào rồi thì chỉ ra được bằng một trong ba kết cục.
+
+### 9.1 `s4230` — chuông và lời dẫn
+
+```lua
+init = AR:Override{
+    RunOnce = function()
+        VarTable.TeacherOrderDemeritTime = 60
+        VarTable.TeacherOrderCreditTime  = 30
+    end,
+    active = function() return not Flags.REC_Initialize_FL end,
+    OnDone = function() Flags.REC_Initialize_FL = true end }
+
+bellSFX = AR:Sound{ sounds = {'bell_desk01_SFX', 'bell_desk02_SFX'},
+                    channel = SoundChannel.FX1 }
+
+teacherOrderInstructionVO = AR:Sound{ sounds = {'NWA146_SFX'}, channel = SoundChannel.PlayerVoice,
+    active = function() return bellSFX.done and not Flags.Heard_Teacher_Snack_Instructions_FL end }
+
+teacherOrderVO = AR:Sound{ sounds = {'NWA147_sfx'}, channel = SoundChannel.PlayerVoice,
+    active = function() return bellSFX.done and Flags.Heard_Teacher_Snack_Instructions_FL end }
+
+TeacherRoundDelay = MakeTimer{ duration = 0.3,
+    active = function() return teacherOrderInstructionVO.done or teacherOrderVO.done end }
+
+toTeacherRoundNAV = AR:NavLogic{ scene = 4231,
+    active = function() return TeacherRoundDelay.done end }
+```
+
+Đây là nơi **60 và 30 được đặt**, chỉ một lần trong cả game — `REC_Initialize_FL` khoá lại
+sau lần đầu. Từ đó trở đi hai con số chỉ còn bị `s4232` bào mòn (mục 9.5).
+
+Lời dẫn dài phát lần đầu, các lần sau chỉ còn một câu ngắn. Cờ
+`Heard_Teacher_Snack_Instructions_FL` không bật ở đây mà bật ở `s4231`, qua
+`AR:NavLogic{ flags = { Heard_Teacher_Snack_Instructions_FL = true } }`.
+
+### 9.2 `s4231` — đơn giáo viên sinh thế nào
+
+Khối `puzzle` là một `MakeCookingPuzzle` giống hệt `s4210` (cùng atlas, cùng toạ độ, cùng
+trạm). Khác nhau nằm gọn trong khối `orders`:
+
+| | Đơn học sinh (`s4210`) | Đơn giáo viên (`s4231`) |
+|---|---|---|
+| Số đơn mỗi vòng | `probabilities` 5/10/60/25 (mục 3) | `{{count = 1, percent = 100}}` — **luôn đúng 1 đơn** |
+| Số nhóm món | `table.random(groups, math.random(3, 5))` — 3 đến 5 nhóm | `table.random(groups, 5)` — **cả 5 nhóm, luôn luôn** |
+| Số nhân sandwich | `math.random(1, 4)` | **`math.random(6, 8)`** |
+| Đơn cốt truyện | có, sinh từ cờ Mel/Corine | nhánh còn nguyên nhưng không sinh gì (mục 9.7) |
+| Đồng hồ | không có | `teacherRoundTimer` |
+
+Ngoài ba dòng đó, hai hàm `Generator` giống nhau từng chữ. Danh sách món, nhóm, cách bốc
+đều y hệt mục 3.
+
+```lua
+Generator = function()
+    if not specialOrders then specialOrders = {} end
+    if #specialOrders > 0 then return table.remove(specialOrders) end
+
+    local fruit    = {'apple', 'orange'}
+    local drink    = {'juice', 'water', 'milk'}
+    local dessert  = {'chocolate', 'cookie'}
+    local side     = {'chips', 'pretzels', 'granola', 'nuts'}
+    local fillings = {'meat', 'cheese', 'lettuce', 'tomatoes'}
+    local bases    = {'bread', 'bagel', 'breadToasted', 'bagelToasted'}
+    local groups   = {'fruit', 'drink', 'dessert', 'side', 'sandwich'}
+
+    local order = {}
+    for _, g in pairs(table.random(groups, 5)) do       -- 5, khong phai math.random(3,5)
+        if     g == 'fruit'   then order[g] = table.random(fruit,   1)[1]
+        elseif g == 'drink'   then order[g] = table.random(drink,   1)[1]
+        elseif g == 'dessert' then order[g] = table.random(dessert, 1)[1]
+        elseif g == 'side'    then order[g] = table.random(side,    1)[1]
+        elseif g == 'sandwich' then
+            local n    = math.random(6, 8)               -- 6-8, khong phai 1-4
+            local base = table.random(bases, 1)[1]
+            local s    = { base }
+            for i = 1, n do table.insert(s, table.random(fillings, 1)[1]) end
+            table.insert(s, base)
+            order[g] = s
+        end
+    end
+    return order
+end
+```
+
+Tức là đơn giáo viên **luôn đủ năm món** và cái sandwich có **6–8 lớp nhân** thay vì 1–4.
+Một đơn học sinh nặng nhất cũng chỉ 5 nhóm + 4 nhân; đơn giáo viên nhẹ nhất đã là 5 nhóm +
+6 nhân. Đó là toàn bộ chỗ khó lên, không phải do đồng hồ chạy nhanh hơn.
+
+`maxSandwichIngredients = 18` vẫn giữ nguyên, nên 8 nhân + 2 vỏ = 10 lớp vẫn thừa chỗ.
+
+### 9.3 Ngưỡng thời gian và ba kết cục
+
+`teacherRoundTimer = MakeTimer{ duration = VarTable.TeacherOrderDemeritTime }` — không có
+trường `active`, nên theo quy tắc mặc định của `Timer_SC` nó chạy ngay khi nạp scene
+(xem mục 8.1).
+
+Bốn điều kiện, đọc thẳng từ bytecode:
+
+| Khối | Đích | Điều kiện |
+|---|---|---|
+| `winNAV` | 4232 | `puzzle.done and teacherRoundTimer.time <= TeacherOrderCreditTime` |
+| `noCreditBusserSFX` | (chỉ phát tiếng) | `not puzzle.done and TeacherOrderCreditTime < teacherRoundTimer.time` |
+| `completedNAV` | 4233 | `puzzle.done and CreditTime < time and time < DemeritTime` |
+| `completedNAV` | 4234 | `DemeritTime <= teacherRoundTimer.time` |
+
+Với giá trị ban đầu 30 và 60:
+
+```
+0s ------------------ 30s ------------------ 60s ------->
+   xong o day                xong o day           chua xong
+   -> 4232, +1 credit        -> 4233, hoa         -> 4234, +1 demerit
+                             (chuong bip luc 30s)
+```
+
+Mốc 60 giây **không cần `puzzle.done`**. Hết giờ là sang 4234 kể cả đang làm dở.
+
+`noCreditBusserSFX` là tiếng báo mất cửa credit: `Buzzer01_Short_SFX` trên `FX6`,
+`volume = 0.65`, kêu đúng một lần tại giây thứ 30 nếu lúc đó chưa xong.
+
+### 9.4 Thưởng phạt
+
+Cả hai đi qua `Demerits_SC`, tra bảng `values`:
+
+```lua
+Teacher_Cred = 1        -- s4232 goi Demerits:Credit('Teacher_Cred')
+Teacher_Dem  = 1        -- s4234 goi Demerits:Soft('Teacher_Dem')
+```
+
+Sổ sách nằm trong `VarTable`:
+
+```
+VarTable.demerits        tong demerit da nhan tu dau game
+VarTable.credits         tong credit da nhan
+VarTable.activeDemerits  = demerits - credits    <- con so thuc su bi tinh
+VarTable.expulsionLimit  nguong bi duoi hoc
+```
+
+- `Demerits:Credit(key)` cộng `credits += values[key]` rồi tính lại `activeDemerits`.
+  Không đổi scene. Với `n == 1` nó còn hạ `One_Credit_Text_Ready_FL` và chọn tin nhắn
+  chúc mừng (`Text16b_SC` hoặc `Text23_SC`) tuỳ cặp cờ `Send_DoubleTake_Text_FL` /
+  `Send_SnackShopWin_Text_FL`.
+- `Demerits:Soft(key)` cộng `demerits += values[key]` rồi **đổi scene về `roomScene`
+  = `s2201`** — phòng ký túc. Bị phạt là bị đuổi về phòng, không phải chỉ trừ điểm.
+
+Chỗ "Soft" khác "Hard": Soft kẹp lại để không bao giờ đuổi học.
+Nếu `activeDemerits + n >= expulsionLimit` thì nó chỉ cộng phần vừa đủ để dừng ở
+`expulsionLimit - 1`; nếu đã ở đúng `expulsionLimit - 1` rồi thì **không cộng gì cả**,
+chỉ đưa về phòng. Vòng giáo viên không thể làm người chơi bị đuổi học.
+
+Đối chiếu: `Snack_Cred = 2` trong cùng bảng chính là "xong 5 vòng được 2 credit" ở mục 1.
+
+### 9.5 Độ khó tự tăng — chỗ bất ngờ nhất
+
+`s4232` (thắng) không chỉ phát credit. Nó **siết luôn hai ngưỡng cho lần sau**:
+
+```lua
+snackPuzzleWin.RunOnce = function()
+    if 15 < VarTable.TeacherOrderDemeritTime then
+        VarTable.TeacherOrderDemeritTime = VarTable.TeacherOrderDemeritTime - 1
+    end
+    if 10 < VarTable.TeacherOrderCreditTime then
+        VarTable.TeacherOrderCreditTime = VarTable.TeacherOrderCreditTime - 1
+    end
+    VarTable.SnackRoundsTotal = VarTable.SnackRoundsTotal + 1
+    Demerits:Credit('Teacher_Cred')
+    Scene:BeginStream{ stream = 'Text20Stream', scene = 'Text20_SC',
+                       captureInput = false, ends = 'manual' }
+end
+```
+
+Mỗi lần thắng, cả hai mốc lùi 1 giây, có sàn:
+
+| | Đầu | Sau n lần thắng | Sàn |
+|---|---|---|---|
+| `TeacherOrderCreditTime` | 30 s | `max(10, 30 - n)` | **10 s** |
+| `TeacherOrderDemeritTime` | 60 s | `max(15, 60 - n)` | **15 s** |
+
+Sàn đạt ở lần thắng thứ 20 (credit) và 45 (demerit). Hai biến nằm trong `VarTable` nên
+**nhớ qua các phiên chơi**, giống `VarTable.Gossip`.
+
+Thua hay hoà không đụng vào hai con số này — chỉ thắng mới làm khó lên.
+
+`SnackRoundsTotal` tăng ở `s4232` và `s4233`, **không tăng ở `s4234`**. Vòng giáo viên làm
+xong (dù chậm) vẫn tính vào chỉ tiêu 5 vòng; hết giờ thì không.
+
+`s4234` còn làm hai việc trước khi phạt:
+
+```lua
+snackPuzzleLose.RunOnce = function()
+    Flags.Send_SnackShopWin_Text_FL = true
+    LoadTime('InPuzzle_FL')
+    Demerits:Soft('Teacher_Dem')
+    Scene:BeginStream{ stream = 'Text21Stream', scene = 'Text21_SC',
+                       captureInput = false, ends = 'manual' }
+end
+```
+
+`s4233` (hoà) chỉ có đúng một dòng: `VarTable.SnackRoundsTotal += 1`. Không Include
+`Demerits_SC`, nên không có đường nào chạm vào credit/demerit — đúng nghĩa không thưởng
+không phạt.
+
+### 9.6 Âm thanh và phụ đề
+
+Khác gossip, **các câu ở đây đều có phụ đề** trong `autotext_SC`:
+
+| Scene | File | Kênh | Phụ đề |
+|---|---|---|---|
+| 4230 | `bell_desk01/02_SFX` | FX1 | — |
+| 4230 | `NWA146_SFX` (lần đầu) | PlayerVoice | *A teacher order! I've got to get this one done fast! If I'm fast enough I can earn a credit - too slow and I'll get a demerit.* |
+| 4230 | `NWA147_sfx` (lần sau) | PlayerVoice | *Another teacher order.* |
+| 4231 | `Buzzer01_Short_SFX` | FX6, 0.65 | — |
+| 4232 | `bell_desk01/02_SFX` | FX1 | — |
+| 4233 | `NWA132a/b/c_sfx` | PlayerVoice | *I'm too slow. I've gotta move faster.* / *I need to pick up the pace.* / *C'mon, Becca, get a move on.* |
+| 4234 | `Buzzer_Double_sfx` | FX1 | — |
+| 4234 | `NWA133a/b/c_sfx` | PlayerVoice | *Darn. I didn't finish the order fast enough. One demerit, comin' up.* / *Shoot. For making the teacher wait, I get a demerit.* / *Rats. I was too slow. One demerit for me.* |
+
+Bộ âm của `puzzle` trong `s4231` gần như trùng `s4210` — 83 tên so với 86, và chỉ lệch ba chỗ:
+
+- `s4231` **không có** `ND_AllDone01_SFX` (`endRound`). Hợp lý: một đơn thì không có "xong cả vòng".
+- `s4231` **không có** `PaperBagShake01..05_sfx`; thay bằng `PaperUnfold01_SFX` +
+  `PaperUnfold10_SFX`, `volume = 0.75`. Đây là phần tử thứ hai của `goodMatchSounds` —
+  tiếng gói đồ khi khớp đúng. Giáo viên nhận đồ nghe tiếng giấy mở, học sinh nghe tiếng
+  túi giấy.
+- `s4231` thêm `Buzzer01_Short_SFX`.
+
+`s4234` phát buzzer trước rồi mới đến giọng Nancy (`notDoneInTimeVO.active = demeritsBuzzerSFX.done`),
+và demerit chỉ được cộng sau khi giọng nói xong (`snackPuzzleLose.active = notDoneInTimeVO.done`).
+
+### 9.7 Xoá đơn học sinh — thực ra không có đoạn mã nào xoá
+
+Bảng hướng dẫn trong game (mục 1) nói vòng giáo viên "xoá sạch đơn học sinh đang chờ".
+Trong bytecode **không có lệnh xoá nào**. Cơ chế thật đơn giản hơn: `s4210` và `s4231` là
+hai scene khác nhau, mỗi scene dựng `MakeCookingPuzzle` riêng. Rời `s4210` là cả khối
+`puzzle` của nó — ticket, khay, lò, mọi thứ — biến mất cùng scene. Quay lại thì `s4210`
+chạy lại từ đầu và sinh vòng mới.
+
+Nên với bản dựng lại: không cần viết hàm xoá đơn, chỉ cần dựng lại trạng thái quầy từ số 0
+khi vào vòng giáo viên và một lần nữa khi ra.
+
+### 9.8 Quay lại vòng thường
+
+`s4232` và `s4233` đều có `backNAV = AR:NavLogic{ scene = 'SnackShop_Exit_SC' }`, mở khi
+âm thanh của scene đó phát xong (`successBellSFX.done` / `workFasterVO.done`).
+
+`SnackShop_Exit_SC` chỉ làm hai việc: gọi
+`Scene:BeginStream{ stream = 'GossipFadeStream', scene = 'GossipFadeStream_SC' }` để tắt
+tiếng tán gẫu (mục 8.9), rồi `AR:NavLogic{ scene = 4200, frame = 2 }`.
+
+Tức là **về phòng ăn (4200), không về thẳng quầy (4210)**. Muốn làm vòng nữa thì phải bấm
+vào quầy lần nữa — và lần đó tính là một lần "vào scene" mới, nên `VarTable.Gossip` lại
+tăng và nghe nhóm tán gẫu kế tiếp.
+
+`s4234` **không có `backNAV`**. Nó thoát bằng `Demerits:Soft`, và hàm đó tự gọi
+`Scene:ChangeScene(Streams.mainName, 's2201')` — ném thẳng người chơi về phòng ký túc.
+
+### 9.9 Bẫy đã gặp
+
+- **`completedNAV` bị gán hai lần** trong `s4231` — một lần cho scene 4233, một lần cho
+  4234. Trong Lua tên global thứ hai đè lên tên thứ nhất, nhưng `AR:NavLogic` đã đăng ký
+  đối tượng với hệ AR ngay lúc tạo, nên **cả hai vẫn hoạt động**. Đã kiểm: không khối nào
+  trong `s4231` đọc `completedNAV`. Là lỗi copy-paste vô hại, đừng "sửa" thành một nav.
+- **Nhánh `specialOrders` trong `s4231` là mã chết.** Hàm `Generator` mở đầu y hệt bản
+  `s4210`: `if not specialOrders then specialOrders = {} end` rồi lấy ra nếu còn. Nhưng
+  khác `s4210`, ở đây **không có đoạn nào nạp đơn Mel/Corine vào**, nên bảng luôn rỗng và
+  luôn rơi xuống nhánh ngẫu nhiên. Suy diễn: global thường là của riêng từng scene
+  (`VarTable` và `Flags` mới là hai kho bền), nên `specialOrders` từ `s4210` không sống
+  sang được. Chưa chứng minh trực tiếp — đã ghi vào `docs/backlog.md`.
+- **60 và 30 chỉ là giá trị lúc mới tinh.** Đọc `s4230` xong mà chép cứng hai số này vào
+  code là sai với người chơi đã thắng vài lần. Nguồn sự thật là
+  `VarTable.TeacherOrderCreditTime` / `TeacherOrderDemeritTime`.
+- **Mốc demerit không đợi `puzzle.done`.** Ba điều kiện kia đều có `puzzle.done`, riêng
+  điều kiện sang 4234 thì không. Cài nhầm thành "chỉ tính khi đã nộp" là vòng giáo viên
+  không bao giờ thua được.
+- **Thắng nhanh làm lần sau khó hơn.** Nếu test bằng cách thắng liên tục sẽ thấy thời gian
+  ngắn dần — đó là đúng bản gốc, không phải lỗi.
+
+---
+
+## 10. Còn thiếu
 
 - 11 mã `UIFOOD` chưa đối chiếu (xem bảng mục 2) — nằm trong `UI_Text_SC` hoặc bảng autotext.
-- Scene `4230` — vòng đơn giáo viên, chưa mổ.
-- Ngưỡng thời gian để đơn giáo viên tính là "nhanh" hay "chậm".
 - Độ thụt lề của dòng nhân sandwich (đo bằng pixel từ ảnh chụp nếu cần chính xác).

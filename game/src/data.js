@@ -51,6 +51,17 @@ export const CATS     = ['fruit','drink','dessert','side','sandwich'];
 // Thoi luong (giay) - doc tu bytecode
 export const DUR = {fridgeOpen:5, bake:5, toast:5, trashLid:0.25, trayVacant:4, pickButton:0.6};
 export const POP = 0.45;   // thoi gian banh nho len sau khi nuong xong (6 khung)
+
+// --- vong don giao vien ---
+// Nguong thoi gian TU SIET DAN: moi lan thang lui 1 giay, co san.
+// Hai gia tri nay nam trong VarTable cua ban goc nen nho qua cac phien choi.
+export const TEACHER = {
+  chanceOneIn: 4,        // math.random(1,4) == 2 -> 1/4 moi vong
+  delayMin: 2, delayMax: 4,
+  creditTime0: 30, creditFloor: 10,
+  demeritTime0: 60, demeritFloor: 15,
+  buzzVol: 0.65,
+};
 export const MAX_SANDWICH = 18;
 
 // Hotspot lay nguyen lieu tren quay [l,t,r,b]

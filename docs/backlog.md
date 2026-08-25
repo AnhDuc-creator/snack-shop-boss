@@ -7,9 +7,19 @@ Xep theo thu tu tac dong toi cam giac choi.
 - **Am thanh.** Toan bo ten file da biet (xem `docs/spec.md` muc 7), file nam san o
   `<game>/Sound/*.HIS`. Vuong o cho format `.HIS` chua giai ma. Doan la header +
   PCM hoac ADPCM, chua kiem chung. Day la thu thay doi cam giac choi ro nhat.
-- **Vong don giao vien.** Scene `4230` trong `extracted/lua/` chua mo. Co chuong reo,
-  xoa sach don hoc sinh dang cho, thuong credit hoac phat demerit tuy toc do.
-  Nguong "nhanh"/"cham" chua biet.
+- **Vong don giao vien.** Da mo xong (xem `docs/spec.md` muc 9, scene 4230 -> 4234) va
+  da noi vao game: `tools/sound_assets.py` gio xuat phat tu ca sau scene nen 14 am con
+  thieu da co (208 am thay vi 194), va bon cue `teacher.bell` / `teacher.buzz` /
+  `teacher.fail` / `teacher.trayAway` da nam trong `sound.js`.
+  Con lai: **tam cau giong Nancy chua co cue** du file da nam trong `game/assets/sound/`
+  - `nwa146` (lan dau nghe huong dan) va `nwa147` (cac lan sau) o s4230, `nwa132a/b/c`
+  (hoa, "toi cham qua") o s4233, `nwa133a/b/c` (thua, "mot demerit") o s4234. Ban goc
+  chan nhip bang chung: s4234 doi buzzer xong moi noi, noi xong moi cong demerit, nen
+  noi vao thi phai them buoc cho thay vi phat chong len `teacher.fail`.
+  Mot suy dien chua chung minh truc tiep: global thuong la cua rieng tung scene, chi
+  `VarTable` va `Flags` moi ben qua scene. Neu SAI thi nhanh `specialOrders` trong
+  `s4231` khong phai ma chet, va don cot truyen cua Mel/Corine co the bi vong giao vien
+  an mat. Muon chac thi phai chay ban goc: xep mot don Mel dang cho roi ep vong giao vien.
 - **Cuon tu dong khung Orders.** Ban goc dung `autoUpHs` / `autoDownHs`, toc do tang
   dan tu 0 toi 250. Hien tai chi cuon bang con lan chuot.
 

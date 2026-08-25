@@ -2,8 +2,8 @@
 // Chay:  node --test game/test/
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { orderCount, makeOrder, makeRound, traySignature, orderSignature,
-         sameSig, findMatch } from '../src/orders.js';
+import { orderCount, makeOrder, makeRound, makeTeacherOrder, traySignature,
+         orderSignature, sameSig, findMatch } from '../src/orders.js';
 import { CATS, BY_CAT, FILLINGS, BUNS } from '../src/data.js';
 
 const N = 200000;
@@ -69,4 +69,39 @@ test('sandwich phai dung thu tu tung lop', () => {
 
 test('khay rong khong khop voi don nao', () => {
   assert.equal(findMatch(makeRound(), {slots:{}, sandwich:[]}), -1);
+});
+
+// --- vong don giao vien ---
+
+test('don giao vien luon la mot don, du ca nam nhom', () => {
+  for (let i=0;i<3000;i++){
+    const o = makeTeacherOrder();
+    const cats = o.parts.map(p => p.cat).sort();
+    assert.equal(cats.length, 5, 'phai du 5 nhom');
+    assert.deepEqual(cats, [...CATS].sort(), 'phai co dung ca 5 nhom');
+    assert.equal(o.teacher, true);
+  }
+});
+
+test('sandwich cua giao vien co 6-8 nhan, nang hon don hoc sinh', () => {
+  let min = 99, max = 0;
+  for (let i=0;i<3000;i++){
+    const s = makeTeacherOrder().parts.find(p => p.cat === 'sandwich');
+    const n = s.stack.length - 2;
+    min = Math.min(min,n); max = Math.max(max,n);
+    assert.ok(n >= 6 && n <= 8, 'so nhan ' + n);
+    assert.equal(s.stack[0], s.stack.at(-1));
+  }
+  assert.equal(min, 6, 'phai cham san 6');
+  assert.equal(max, 8, 'phai cham tran 8');
+});
+
+test('don giao vien nhe nhat van nang hon don hoc sinh nang nhat', () => {
+  // hoc sinh: toi da 5 nhom + 4 nhan.  giao vien: toi thieu 5 nhom + 6 nhan.
+  let hocSinhMax = 0;
+  for (let i=0;i<5000;i++){
+    const s = makeOrder().parts.find(p => p.cat === 'sandwich');
+    if (s) hocSinhMax = Math.max(hocSinhMax, s.stack.length - 2);
+  }
+  assert.equal(hocSinhMax, 4);
 });

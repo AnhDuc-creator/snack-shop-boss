@@ -1,14 +1,20 @@
 """
 Chuan bi am thanh cho minigame: tu .HIS trong thu muc game -> game/assets/sound/.
 
-Danh sach can gi KHONG viet tay. No doc thang tu bytecode cua scene s4210 -
-noi ban goc khai bao moi khoi AR.Sound - VA cac script s4210 keo vao bang
+Danh sach can gi KHONG viet tay. No doc thang tu bytecode cua cac scene goc -
+noi ban goc khai bao moi khoi AR.Sound - VA cac script chung keo vao bang
 `Scene:Include`. Them hay bot am trong ban goc thi chay lai la danh sach tu
 cap nhat, khong phai sua Python.
 
 Vi sao phai lan theo Include: 108 clip tan gau nam trong `GossipVOs_SC`, khong
 nam trong `s4210`. Chi doc mot minh s4210 thi ra 86 am, thieu dung mot phan ba.
-Hien tai lan het ra 194 am (86 + 108).
+
+Vi sao phai co NHIEU diem xuat phat: vong giao vien khong phai include cua
+`s4210` ma la nam scene ROI NHAU, noi voi nhau bang `AR:NavLogic{ scene = ... }`
+chu khong bang `Scene:Include`. Lan theo Include khong bao gio toi duoc chung -
+phai ke thang ten ra. Xem docs/spec.md muc 9.
+
+Hien tai lan het ra 208 am (86 + 108 + 14 cua vong giao vien).
 
 Chay rieng:
     py tools/sound_assets.py "<thu-muc-game>"     # copy + doi, day du
@@ -38,7 +44,16 @@ sys.path.insert(0, os.path.join(ROOT, "tools"))
 from his_to_wav import HEADER, CODEC_PCM, CODEC_VORBIS, parse_header, wav_bytes  # noqa: E402
 
 LUA_DIR = os.path.join(ROOT, "extracted", "lua")
-SCENE_LUAC = os.path.join(LUA_DIR, "s4210.luac")
+
+# Diem xuat phat. Sau scene RIENG - khong scene nao Include scene nao, nen thieu
+# mot dong o day la thieu han cum am cua scene do.
+#   s4210  quay don hoc sinh (tu day moi Include Cooking_SC, GossipVOs_SC...)
+#   s4230  chuong reo bao co don giao vien
+#   s4231  lam don giao vien - khac s4210 dung ba am: bo ND_AllDone01, doi
+#          PaperBagShake01..05 thanh PaperUnfold01/10, them Buzzer01_Short
+#   s4232  thang: chuong    s4233  hoa: NWA132    s4234  thua: Buzzer_Double + NWA133
+SCENES = ["s4210", "s4230", "s4231", "s4232", "s4233", "s4234"]
+SCENE_LUAC = [os.path.join(LUA_DIR, n + ".luac") for n in SCENES]
 SRC_DIR = os.path.join(ROOT, "extracted", "sound_src")
 OUT_DIR = os.path.join(ROOT, "game", "assets", "sound")
 
@@ -77,13 +92,19 @@ def includes(tokens):
 
 
 def needed_sounds(luac=SCENE_LUAC):
-    """Moi ten am thanh scene s4210 va cac script no Include nhac den.
+    """Moi ten am thanh cac scene goc va cac script chung Include nhac den.
 
-    GossipVOs_SC nam o day: no giu 108 clip tan gau, `s4210` chi Include chu
-    khong khai bao lai. Bo qua no la thieu dung mot phan ba so am.
+    `luac` nhan mot duong dan hoac mot danh sach duong dan; ca hai deu duyet
+    theo be rong, gap `Scene:Include` thi day script do vao cuoi hang doi.
+
+    GossipVOs_SC vao bang duong Include: no giu 108 clip tan gau, `s4210` chi
+    Include chu khong khai bao lai. Bo qua no la thieu dung mot phan ba so am.
+    Nam scene 4230-4234 thi nguoc lai - khong ai Include chung, phai co san
+    trong hang doi tu dau (xem SCENES).
     """
     seen, out = set(), []
-    queue, done = [luac], set()
+    roots = [luac] if isinstance(luac, str) else list(luac)
+    queue, done = list(roots), set()
 
     while queue:
         path = queue.pop(0)
@@ -184,7 +205,7 @@ def main():
     if "--list" in flags:
         for n in names:
             print("%-28s -> %s" % (n, asset_name(n)))
-        print("\nTong %d am thanh scene s4210 dung." % len(names))
+        print("\nTong %d am thanh %s dung." % (len(names), "/".join(SCENES)))
         return 0
 
     if argv:

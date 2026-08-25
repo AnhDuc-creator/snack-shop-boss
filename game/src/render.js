@@ -4,6 +4,7 @@ import { W, H, FOODS, FRIDGE, OVEN, TOASTER, TRASH, TRAYS, ORDERS_UI,
          DISPENSERS, BACK_HS } from './data.js';
 import { orderLines } from './orders.js';
 import { S } from './state.js';
+import { TEACHER } from './data.js';
 
 export const inR = (r,x,y) => x>=r[0] && x<r[2] && y>=r[1] && y<r[3];
 export const rw  = r => r[2]-r[0];
@@ -82,6 +83,23 @@ export function drawOrders(){
   });
   S.contentH = y + S.scroll - a[1];
   cx.restore();
+
+  if (S.teacher.phase === 'active') drawTeacherTimer(a);
+}
+
+/**
+ * Ban goc khong hien dong ho - chi bao bang tieng chuong luc mat cua credit.
+ * O day ve mot vach mong duoi khung Orders: xanh khi con trong cua credit,
+ * do khi da qua. Doi mau chu khong hien so, giu tinh than "nghe chu khong nhin".
+ */
+function drawTeacherTimer(a){
+  const T = S.teacher;
+  const w = rw(a);
+  const frac = Math.min(1, T.t / T.demerit);
+  cx.fillStyle = 'rgba(0,0,0,.35)';
+  cx.fillRect(a[0], a[3] + 2, w, 3);
+  cx.fillStyle = T.t <= T.credit ? '#4caf50' : '#e53935';
+  cx.fillRect(a[0], a[3] + 2, w * (1 - frac), 3);
 }
 
 export function drawDebug(){
@@ -96,6 +114,14 @@ export function drawDebug(){
   for (const [k,slot] of Object.entries(TRAYS[0].slots)) boxes.push(['L:'+k, slot]);
   for (const [k,slot] of Object.entries(TRAYS[1].slots)) boxes.push(['R:'+k, slot]);
   if (S.fridgeOpen) for (const [n,r] of Object.entries(FRIDGE.items)) boxes.push(['f:'+n, r]);
+  if (S.teacher.phase !== 'none'){
+    cx.fillStyle = '#ff0'; cx.font = '9px monospace';
+    const T = S.teacher;
+    cx.fillText(`teacher ${T.phase} t=${T.t.toFixed(1)} credit<=${T.credit} demerit>=${T.demerit}`,
+                4, 4);
+    cx.fillText(`credits=${S.credits} demerits=${S.demerits}`, 4, 15);
+  }
+
   for (const [n,r] of boxes){
     cx.strokeStyle = n.startsWith('L:') || n.startsWith('R:')
       ? 'rgba(40,140,255,.9)' : 'rgba(255,0,0,.7)';

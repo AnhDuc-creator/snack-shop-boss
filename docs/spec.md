@@ -1,0 +1,418 @@
+# Snack Shop Boss — đặc tả trích từ game gốc
+
+Nguồn: `Ciftree.dat` → `s4210.luac` (scene) + `Cooking_SC.luac` (logic dùng chung),
+Nancy Drew #21 *Warnings at Waverly Academy*, Her Interactive 2009.
+Mọi con số dưới đây đọc trực tiếp từ bytecode, không phải suy đoán.
+
+**Độ phân giải gốc: 640 × 400.** Atlas sprite: `REC_SNACKSHOPPUZ-TXT_OVL.png`.
+Nền: `REC_SnackShopPUZ-TXT_BG` (từ `Video/REC_SnackShopPUZ-TXT_BG.bik`).
+
+Quy ước toạ độ: `Rect.New(left, top, right, bottom)` — góc phải/dưới **không bao gồm**.
+`Rect.LTWH(left, top, width, height)` xuất hiện ở vài hotspot, đã ghi rõ bên dưới.
+`source` = ô cắt trong atlas. `onScreen` = vị trí vẽ trên màn 640×400.
+
+---
+
+## 1. Luật chơi chính thức
+
+Nguyên văn từ `REC_SNACKSHOPDIRECTIONSCU-TXT_OVL.png` (bảng hướng dẫn trong game):
+
+- Giờ mở cửa 6:00 – 23:00.
+- Mỗi đơn là một ticket riêng, nhiều ticket nộp cùng lúc nên **phải cuộn** danh sách.
+- Mỗi đơn tối đa **một** món mỗi nhóm: drink, fruit, sandwich, side, dessert.
+- Khu phục vụ có **hai khay**, làm song song hai đơn.
+- **Không gộp đơn** — một khay chỉ chứa món của đúng một đơn.
+- Nhân sandwich phải khớp **chính xác** thứ tự ghi trên ticket.
+- Cookie bắt buộc nướng trước khi phục vụ.
+- Bấm Pick Up: sai thì gỡ món sai, thay món đúng, bấm lại.
+- **Đơn giáo viên**: chuông reo, mọi đơn học sinh đang chờ bị **xoá sạch**, phải làm ngay.
+  Thưởng credit hoặc phạt demerit tuỳ tốc độ.
+- Mỗi ngày ít nhất một vòng, không thì 3 demerit. Xong 5 vòng được 2 credit.
+
+---
+
+## 2. Bảng món và ô cắt atlas
+
+Mọi món có hai biến thể hình: `left` / `right` (hoặc `leftUp`/`rightUp`/`leftDown`/`rightDown`
+với bánh — hai nửa bánh, mỗi nửa hai trạng thái). `autotext` là mã chuỗi hiển thị trên ticket.
+
+### Bánh (sandwich base)
+
+| Món | leftUp | rightUp | leftDown | rightDown | autotext |
+|---|---|---|---|---|---|
+| `bread` | 495,1,543,29 | 544,1,592,30 | 495,30,543,58 | 544,31,592,59 | UIFOOD01 |
+| `breadToasted` | 495,59,543,88 | 544,60,592,89 | 495,89,543,117 | 544,90,592,118 | UIFOOD02 |
+| `bagel` | 593,33,639,65 | 640,33,686,65 | 593,1,640,32 | 641,1,689,32 | UIFOOD03 |
+| `bagelToasted` | 593,98,639,130 | 640,98,686,130 | 593,66,640,97 | 641,66,689,97 | UIFOOD04 |
+
+### Nhân sandwich
+
+| Món | left | right | autotext |
+|---|---|---|---|
+| `meat` | 358,455,406,483 | 407,455,448,483 | UIFOOD10 |
+| `tomatoes` | 438,191,489,214 | 438,215,489,238 | UIFOOD11 |
+| `lettuce` | 449,430,484,459 | 449,460,485,489 | UIFOOD12 |
+| `cheese` | 358,430,396,454 | 397,430,433,454 | UIFOOD13 |
+
+### Đồ uống, trái cây, tráng miệng, snack
+
+| Món | Nhóm | left | right | autotext |
+|---|---|---|---|---|
+| `juice` | drink | 304,191,338,271 | 339,191,370,271 | UIFOOD17 |
+| `water` | drink | 544,268,576,350 | 577,268,607,349 | UIFOOD18 |
+| `milk` | drink | 371,191,405,236 | 406,191,437,236 | UIFOOD14 |
+| `apple` | fruit | 371,237,400,268 | 401,237,430,268 | UIFOOD20 |
+| `orange` | fruit | 431,239,460,266 | 461,239,490,265 | UIFOOD19 |
+| `chocolate` | dessert | 485,432,546,458 | 486,459,546,484 | UIFOOD05 |
+| `cookie` | dessert | 527,144,578,176 | 579,145,633,176 | UIFOOD16 |
+| `cookieDough` | (trung gian) | 495,130,526,154 | 579,145,633,176 | UIFOOD15 |
+| `chips` | side | 495,177,540,216 | 541,177,605,216 | UIFOOD06 |
+| `pretzels` | side | 491,217,535,267 | 536,217,596,267 | UIFOOD07 |
+| `granola` | side | 606,177,652,221 | 653,177,716,221 | UIFOOD08 |
+| `nuts` | side | 597,222,640,266 | 641,222,703,267 | UIFOOD09 |
+
+`cookieDough` không đặt được lên khay — phải qua lò thành `cookie`.
+
+### Nội dung `autotext` trên ticket
+
+Ticket hiển thị **chuỗi tiếng Anh dễ đọc, chữ thường, mỗi món một dòng, căn lề trái**.
+Đã đối chiếu được 9/20 mã từ ảnh chụp trong game:
+
+| Mã | Món | Chuỗi hiển thị |
+|---|---|---|
+| UIFOOD02 | `breadToasted` | `toasted bread` |
+| UIFOOD03 | `bagel` | `bagel` |
+| UIFOOD07 | `pretzels` | `pretzels` |
+| UIFOOD11 | `tomatoes` | `tomatoes` |
+| UIFOOD12 | `lettuce` | `lettuce` |
+| UIFOOD14 | `milk` | `milk` |
+| UIFOOD16 | `cookie` | `cookie` |
+| UIFOOD17 | `juice` | `juice` |
+| UIFOOD19 | `orange` | `orange` |
+
+Phần lớn trùng id, nhưng `breadToasted` → `toasted bread` chứng minh đây là chuỗi soạn tay
+chứ không sinh từ id. Suy ra `bagelToasted` → `toasted bagel`. Còn lại chưa xác nhận:
+`bread`, `chocolate`, `chips`, `granola`, `nuts`, `meat`, `cheese`, `cookieDough`,
+`water`, `apple`.
+
+### Cách trình bày sandwich
+
+Sandwich **không gộp một dòng** mà tách từng lớp, xếp **từ dưới lên**, nhân **thụt vào**:
+
+```
+bagel          <- banh duoi, can le trai
+   lettuce     <- nhan, thut vao
+   tomatoes    <- nhan, thut vao
+bagel          <- banh tren, can le trai
+```
+
+Nhờ vậy người chơi đọc được đúng thứ tự lớp cần xếp.
+
+### Thứ tự các dòng trong một đơn
+
+**Ngẫu nhiên theo từng đơn.** Hai mẫu quan sát được:
+
+- `cookie`, `milk` → dessert, drink
+- sandwich, `juice`, `orange`, `cookie`, `pretzels` → sandwich, drink, fruit, dessert, side
+
+Không theo alphabet, cũng không theo thứ tự nhóm cố định trong code. Gần như chắc chắn đây
+là thứ tự mà `table.random` bốc nhóm ra trong bộ sinh đơn, nên khi dựng lại cần **giữ nguyên
+thứ tự bốc ngẫu nhiên** thay vì sắp xếp lại.
+
+---
+
+## 3. Thuật toán sinh đơn
+
+### Số đơn mỗi vòng (weighted random)
+
+| Số đơn | Xác suất |
+|---|---|
+| 3 | 5% |
+| 4 | 10% |
+| 5 | **60%** |
+| 6 | 25% |
+
+### Nội dung một đơn
+
+```
+nhom = {fruit, drink, dessert, side, sandwich}
+chon = random_subset(nhom, math.random(3, 5))   -- 3 den 5 nhom, khong phai luon du 5
+
+fruit    -> random 1 trong {apple, orange}
+drink    -> random 1 trong {juice, water, milk}
+dessert  -> random 1 trong {chocolate, cookie}
+side     -> random 1 trong {chips, pretzels, granola, nuts}
+sandwich -> banh = random 1 trong {bread, bagel, breadToasted, bagelToasted}
+            n = math.random(1, 4) nhan tu {meat, cheese, lettuce, tomatoes}
+            xep: banh + n nhan (co thu tu) + banh
+```
+
+Điểm dễ bỏ sót: **mỗi đơn chỉ có 3–5 nhóm**, không phải lúc nào cũng đủ cả 5.
+
+### Đơn cốt truyện (ưu tiên trước đơn ngẫu nhiên)
+
+| Cờ điều kiện | Nội dung | Cờ đánh dấu xong |
+|---|---|---|
+| `MC_Said_Get_Snack_FL` và chưa `Got_MC_Snack_FL` | milk + cookie | `Got_MC_Snack_FL` |
+| `CM_Said_Get_Snack_FL` và chưa `Got_CM_Snack_FL` | juice + apple + chocolate + sandwich(bagelToasted, cheese, bagelToasted) | `Got_CM_Snack_FL` |
+
+Đơn thứ hai khớp đúng lời thoại của Corine: bagel nướng kẹp phô mai, táo, nước quả, thanh kẹo.
+
+---
+
+## 4. Trạm và thời lượng
+
+| Trạm | Timer | Giá trị |
+|---|---|---|
+| Tủ lạnh | `openDuration` | **5** |
+| Lò cookie | `bakeDuration` | **5** (đã bấm giờ trong game, khớp) |
+| Máy nướng | `downDuration` | **5** |
+| Thùng rác | `ovlDuration` | **0.25** |
+| Khay (thu dọn) | `vacantDuration` | **4** |
+| Nút Pick Up | `buttonDuration` | **0.6** |
+
+Khác: `maxSandwichIngredients = 18` (giới hạn cứng số lớp trên một sandwich).
+
+### Tủ lạnh
+- source `2,2,188,247` → onScreen `0,35,186,280`
+- hotspot mở: `LTWH(4,48,138,163)`
+- Hotspot lấy món bên trong (toạ độ tương đối tủ đang mở):
+  `milk 14,53,78,88` · `cookieDough 93,62,140,79` · `juice 42,96,89,160` ·
+  `water 102,96,140,160` · `orange 69,177,96,199` · `apple 117,180,145,207`
+
+### Lò cookie
+- `openHotspot LTWH(30,303,146,39)` · `closeHotspot LTWH(30,337,146,42)` · `pickUpHotspot LTWH(30,303,146,39)`
+- `unbakedSource 293,2,493,94` · `bakedSource 293,97,493,189` → onScreen `0,293,200,385`
+- Đèn đỏ: source `175,250,188,260` → onScreen `143,351,156,361`
+- Đèn xanh: source `159,250,172,260` → onScreen `124,351,137,361`
+- Âm báo xong: `Bell_Ring_SFX`
+- Trạng thái: `closedUnbaked → openUnbaked → baking → closedBaked → openBaked`
+
+### Máy nướng
+- `pickPlaceHotspot 572,162,618,216` · `startHotspot 574,234,609,256` · onScreen `570,159,618,270`
+- **Một lần nướng cho ra hai nửa bánh.** Đã kiểm chứng trong game gốc: bỏ một phần bánh
+  vào, gạt cần một lần, lấy ra được hai nửa đã nướng — đủ cho một sandwich, không phải
+  nướng hai lượt. Art vẽ đúng hai lát trong hai khe.
+- **`Source1` / `Source2` là SỐ NỬA CÒN LẠI trong lò, không phải số khe.** Xác nhận bằng
+  cách cắt sprite ra xem: ô `x308` (`ToastedUpSource1`) chỉ có một nửa bánh bên trái, khe
+  phải trống; ô `x257` (`ToastedUpSource2`) có đủ hai nửa. Tương tự `UpSource2` là hai nửa
+  chưa nướng. Gán ngược sẽ khiến một nửa bánh tự biến mất rồi hiện lại.
+- **Vòng đời và hình tương ứng:**
+
+  | Trạng thái | Hình | Ghi chú |
+  |---|---|---|
+  | `full` | `UpSource2` | cần gạt lên, hai nửa sống nhô ra |
+  | `toasting` | `DownSource` | cần gạt xuống, bánh chìm trong lò, giữ 5 giây |
+  | `popping` | 6 khung animation | bánh nhô lên, cần gạt bật lên, chỉ ~0.45 giây |
+  | `done` (2 nửa) | `ToastedUpSource2` | |
+  | `done` (1 nửa) | `ToastedUpSource1` | sau khi lấy ra một nửa |
+
+- Dải 6 khung là cảnh bánh **nhô lên khi nướng xong**, không phải cảnh hạ xuống. Trải nó ra
+  suốt 5 giây nướng sẽ thành giật từng nấc.
+  - bread: `2,391,50,502` / `53,391,…` / `104,…` / `155,…` / `206,…` / `257,391,305,502`
+  - bagel: `2,277,50,388` / `53,…` / `104,…` / `155,…` / `206,…` / `257,277,305,388`
+- Frame cuối trùng đúng với `ToastedUpSource2`; `ToastedUpSource1` là ô thứ 7 cùng dải.
+- Âm: `Toaster_Down01..05_SFX` khi gạt, `Toaster_Pop01..05_SFX` khi bật lên
+
+### Hướng nửa bánh — quan trọng khi vẽ
+
+Bốn biến thể của mỗi loại bánh không phải bốn góc nhìn ngẫu nhiên:
+
+- **`Up`** = mặt cắt ngửa lên, ruột bánh màu nhạt → dùng làm **nửa dưới** của sandwich
+- **`Down`** = úp xuống, thấy vỏ nâu bóng → dùng làm **nửa trên**
+- `left` / `right` = biến thể phối cảnh cho khay trái và khay phải
+
+Gán ngược sẽ ra cái sandwich lộn ngược tuy vẫn "chạy đúng".
+
+### Khu vực ticket
+- Vùng hiển thị: `LTWH(499,25,126,129)`, `textHeight 12`, `vertBuffer 0`, `catchUpFactor 0.25`
+- Nút cuộn lên: `499,0,640,50` · cuộn xuống: `499,108,640,158`
+- Tốc độ cuộn: `minSpeed 0` → `maxSpeed 250`
+- Vạch phân cách giữa các đơn: source `37,249,157,262` (120×13) — là một dải hoa văn
+  đối xứng, không phải đường kẻ chấm như walkthrough mô tả
+- Khung có viền vàng với tiêu đề "Orders" ở đầu, nền xanh nhạt, chữ đen
+- Danh sách bắt đầu sát mép trên trái của vùng, đơn cũ ở trên
+
+---
+
+## 5. Hai khay
+
+Mỗi khay có **5 ô cố định** theo nhóm — món không xếp tự do mà rơi vào đúng ô của nhóm nó.
+
+Đã kiểm chứng bằng ảnh: hộp sữa đặt lên khay phải nằm đúng ô `drink 367,187,399,268`
+(quy về hệ 640×400 sau khi chia tỉ lệ ảnh chụp). Ô drink nằm lệch hẳn sang mép trái khay,
+không phải giữa khay.
+
+### Khay trái
+- Khay: source `359,272,543,350` → onScreen `172,202,356,280`
+- Nút Pick Up: source `569,497,651,529` → onScreen `235,310,317,342` (cũng là hotspot)
+- Ô: `drink 190,187,228,268` · `fruit 251,192,280,223` · `dessert 286,206,347,238` ·
+  `side 309,222,355,272` · `sandwich 241,226,289,255`
+
+### Khay phải
+- Khay: source `358,351,552,429` → onScreen `355,202,549,280`
+- Nút Pick Up: source `569,532,651,564` → onScreen `402,310,484,342`
+- Ô: `drink 367,187,399,268` · `fruit 416,192,446,223` · `dessert 449,207,509,238` ·
+  `side 479,222,544,272` · `sandwich 415,226,466,255`
+
+### Trạm lấy nguyên liệu (hotspot trên quầy)
+`bread 208,25,291,68` · `bagel 370,31,479,69` · `chocolate 317,21,352,71` ·
+`chips 244,98,281,150` · `pretzels 295,98,332,150` · `granola 346,98,381,150` ·
+`nuts 395,98,431,150` · `meat 249,159,283,187` · `tomatoes 303,161,337,187` ·
+`lettuce 355,161,389,187` · `cheese 407,164,445,187`
+
+Thùng rác: source `191,2,290,46` → onScreen `534,298,633,342`
+Nút quay ra: `207,365,502,399`
+
+---
+
+## 6. Vòng đơn giáo viên
+
+```
+startTeacherRound:
+    startRandom = math.random(1, 4)
+    neu startRandom  2 thi bat teacherRoundTimer
+teacherRoundTimer.duration = math.random(2, 4)
+khi xong -> chuyen sang scene 4230 (teacherOrderRoundNAV)
+```
+
+Phép so sánh `startRandom` với `2` chưa đọc rõ toán tử (`>` hay `==`) — cần xem opcode
+nhánh nếu muốn khớp tuyệt đối. Xác suất rơi vào khoảng 1/4 đến 3/4 mỗi vòng.
+
+`gossipDelay` = `math.random(2, 10)` — hẹn giờ phát lời tán gẫu của khách, bị chặn nếu cờ
+`Curfew_FL` bật.
+
+---
+
+## 7. Phản hồi, âm thanh và biến đếm
+
+- Biến đếm: `SnackRoundsTotal += 1` mỗi vòng hoàn thành
+- Thành tựu `ACH_WAC_COOK` qua cờ `META_Short_Order_Cook_FL`
+- Xong vòng đầu tiên → nhận `INV_Order`, và mở cờ `Got_INV_Key_Cellar_FL` (chìa khoá hầm)
+
+### Âm thanh — bảng đầy đủ
+
+Trích từ `s4210.luac`: **42 khối `AR.Sound`, 86 tên file phân biệt**. `Cooking_SC.luac`
+không chứa một tên file nào — nó là engine chung, chỉ gọi *khe* (`pickSound`, `placeSound`,
+`beginSound`, `doneSound`, `openSound`, `closeSound`, `replaceSound`, `sound`); `s4210`
+mới là nơi nhồi dữ liệu vào.
+
+**Kênh dùng để CẮT tiếng, không phải để chồng tiếng.** Nạp âm mới vào một kênh thì âm đang
+chạy trên kênh đó bị cắt. Vì vậy bấm nhanh vào máy nướng không xếp lớp, và nộp hai khay
+liên tiếp thì giọng Nancy cắt câu trước. Tám kênh: `FX1`..`FX7` và `PlayerVoice`.
+
+**Âm lượng thuộc về chỗ xảy ra hành động, không thuộc về file.** Cùng `Pickup_Apple01..03`
+nhưng 0.55 khi lấy từ ngăn tủ lạnh và 0.4 khi nhấc khỏi khay; `Fabric_PlaceShort01..03` có
+ba mức tuỳ chỗ. Tra theo tên file sẽ gán sai. Cột trống = bản gốc không đặt `volume`.
+
+#### Quầy nguyên liệu — FX1
+
+| Món | Hotspot | Vol | File |
+|---|---|---|---|
+| bread | `208,25,291,68` | 0.5 | `Fabric_PlaceShort01..03_SFX` |
+| bagel | `370,31,479,69` | 0.5 | `Fabric_PlaceShort01..03_SFX` |
+| chocolate | `317,21,352,71` | — | `PickUp_Candy01,04,07_SFX` |
+| chips | `244,98,281,150` | — | `ChipBag_Short01..03_SFX` |
+| pretzels | `295,98,332,150` | — | `ChipBag_Short01..03_SFX` |
+| granola | `346,98,381,150` | — | `ChipBag_Short01..03_SFX` |
+| nuts | `395,98,431,150` | — | `ChipBag_Short01..03_SFX` |
+| meat | `249,159,283,187` | — | `Pickup_Squish_Small04,05_SFX` |
+| tomatoes | `303,161,337,187` | — | `Pickup_Squish_Small01,03_SFX` |
+| lettuce | `355,161,389,187` | 0.5 | `Pickup_Lettuce01..03_SFX` |
+| cheese | `407,164,445,187` | 0.5 | `styrofoam_put_down1..3_SFX` |
+
+#### Tủ lạnh — cửa FX2, ngăn trong FX1
+
+| Ngữ cảnh | Khe | Kênh | Vol | File |
+|---|---|---|---|---|
+| Mở cửa | `openSound` | FX2 | 0.55 | `FridgeOpen01..03_SFX` |
+| Đóng cửa | `closeSound` | FX2 | 0.55 | `FridgeClose01..03_SFX` |
+| milk | `sound` | FX1 | — | `Pickup_PaperNote01..04_SFX` |
+| cookieDough | `sound` | FX1 | — | `Mud_ShortSquish01,03,04_SFX` |
+| juice | `sound` | FX1 | — | `PickUpObject02..07_SFX` |
+| water | `sound` | FX1 | — | `PickUpObject02..07_SFX` |
+| orange | `sound` | FX1 | 0.55 | `Pickup_Apple01..03_SFX` |
+| apple | `sound` | FX1 | 0.55 | `Pickup_Apple01..03_SFX` |
+
+#### Lò cookie — FX3
+
+| Ngữ cảnh | Khe | File |
+|---|---|---|
+| Mở lò (cũng là lúc bột vào) | `openSound` | `TinFoil_Crinkle01..05_SFX` |
+| Đóng lò | `closeSound` | `MetalDoor_Small01,02_SFX` |
+| Nướng xong (chuông) | `doneSound` | `Bell_Ring_SFX` |
+| Nhấc cookie ra | `closeSound` | `MetalDoor_Small01,02_SFX` |
+
+**Lò chỉ có ba âm.** Bỏ bột vào không có âm riêng: trong bản gốc, cú bấm mở lò *chính là*
+cú bấm bỏ bột (`openHs` nhận `heldFood` rồi chuyển sang `openUnbaked`), và cú bấm đó đã phát
+`openSound`. Nhấc cookie ra dùng lại `closeSound` — cửa lò đóng ngay lúc đó.
+
+#### Máy nướng — FX4
+
+| Ngữ cảnh | Khe | Vol | File |
+|---|---|---|---|
+| Đặt bánh vào | `placeSound` | 0.5 | `Fabric_PlaceShort01..03_SFX` |
+| Gạt cần xuống | `beginSound` | — | `Toaster_Down01..05_SFX` |
+| Bánh bật lên | `doneSound` | — | `Toaster_Pop01..05_SFX` |
+| Nhấc bánh ra | `pickSound` | 0.5 | `Fabric_PlaceShort01..03_SFX` |
+
+#### Thùng rác — FX5
+
+| Ngữ cảnh | File |
+|---|---|
+| Bỏ món vào (nắp mở `ovlDuration 0.25` rồi tự ẩn) | `Put_Down_Metal01..03_SFX` |
+
+**Thùng rác chỉ có một âm.** Mở nắp, bỏ món và nắp đóng lại đều nằm trong cùng một cú bấm.
+
+#### Khay ra vào — FX6
+
+| Ngữ cảnh | Khe | File |
+|---|---|---|
+| Đưa khay đi | — | `PaperBagShake01..05_sfx` |
+| Khay mới tới | `replaceSound` | `Object_Place01..03_SFX` |
+
+`Object_Place01..03` nằm trên **FX6**, không phải kênh giọng nói — nó là tiếng khay mới
+đặt xuống, không phải lời thoại.
+
+#### Nhặt/đặt món trên khay — FX7
+
+| Nhóm | Nhặt (`pickSound`) | Đặt (`placeSound`) | Vol |
+|---|---|---|---|
+| drink | `Plastic_Short01..04_SFX` | `Plastic_Short01..04_SFX` | 0.55 |
+| fruit | `Pickup_Apple01..03_SFX` | `Knock_Quiet01..03_SFX` | 0.4 |
+| dessert | `Fabric_PlaceShort01..03_SFX` | `Fabric_PlaceShort01..03_SFX` | 0.35 |
+| side | `ChipBag_Short01..03_SFX` | `ChipBag_Short01..03_SFX` | — |
+| sandwich | `Fabric_PlaceShort01..03_SFX` | `Fabric_PlaceShort01..03_SFX` | 0.55 |
+
+#### Giọng Nancy — PlayerVoice
+
+| Ngữ cảnh | Khe | File |
+|---|---|---|
+| Khớp đúng | `goodMatchSounds` | `NWA056a..d_sfx` |
+| Khớp sai | `badMatchSound` | `NWA103..106_sfx` |
+| Xong cả vòng (`allDoneVO`) | `endRound` | `ND_AllDone01_SFX` |
+
+### Định dạng file `.HIS`
+
+Đã đọc ngược, kiểm trên cả 3021 file, không file nào lệch — xem `tools/his_to_wav.py`.
+32 byte header, trong đó 16 byte từ `0x08` là một khối `WAVEFORMATEX` mô tả âm thanh **sau**
+khi giải nén. Trường `0x1C` là codec:
+
+- **codec 1** (PCM thô) — phần dữ liệu là PCM nguyên bản → xuất `.wav`, không nén.
+- **codec 2** (Ogg Vorbis) — phần dữ liệu là một file Ogg hoàn chỉnh → tách thẳng ra `.ogg`.
+  Bên trong đã là Vorbis sẵn, nên "đổi sang wav" cho nhóm này không lấy lại được gì; mất mát
+  xảy ra từ lúc Her Interactive đóng gói.
+
+Trong 86 âm minigame dùng: **46 file codec 1** (`.wav`) và **40 file codec 2** (`.ogg`).
+`tools/sound_assets.py` tự đọc danh sách cần từ bytecode rồi xuất ra `game/assets/sound/`,
+đặt tên viết thường và bỏ hậu tố `_SFX`. `tools/setup.py` gọi nó ở bước 3.
+
+---
+
+## 8. Còn thiếu
+
+- 11 mã `UIFOOD` chưa đối chiếu (xem bảng mục 2) — nằm trong `UI_Text_SC` hoặc bảng autotext.
+- Scene `4230` — vòng đơn giáo viên, chưa mổ.
+- Ngưỡng thời gian để đơn giáo viên tính là "nhanh" hay "chậm".
+- Toán tử so sánh trong `startTeacherRound`.
+- Độ thụt lề của dòng nhân sandwich (đo bằng pixel từ ảnh chụp nếu cần chính xác).

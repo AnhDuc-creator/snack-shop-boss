@@ -1,0 +1,13 @@
+# Ban giai nen day du tu Ciftree.dat - hang GB, khong can cho ai ngoai may ban.
+# Sinh lai bang: py tools/setup.py <duong-dan-game>
+extracted/
+
+# game/assets/ TRUOC DAY bi bo qua. Da duoc Her Interactive cho phep phat hanh
+# nen gio commit binh thuong - xem muc Ban quyen trong README.md.
+
+# Rac he thong
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
+.vscode/

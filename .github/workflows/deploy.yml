@@ -1,0 +1,49 @@
+# Chay test roi dua thu muc game/ len GitHub Pages.
+# Moi lan push vao main la tu chay lai, khong phai lam gi thu cong.
+
+name: Test va deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Chay test bo sinh don
+        run: node --test game/test/orders.test.mjs
+
+  deploy:
+    needs: test
+    if: github.event_name != 'pull_request'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - name: Dong goi thu muc game
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: game
+      - name: Dua len Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

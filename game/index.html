@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="vi">
+<meta charset="utf-8">
+<title>Snack Shop Boss</title>
+<style>
+  html,body{margin:0;height:100%;background:#111;display:grid;place-items:center;
+            font-family:Georgia,'Times New Roman',serif;color:#ddd}
+  #wrap{position:relative}
+  canvas{display:block;cursor:none;background:#000}
+  canvas.sharp{image-rendering:pixelated}
+  #hint{position:absolute;left:0;right:0;bottom:-28px;text-align:center;
+        font-size:13px;color:#888}
+</style>
+
+<div id="wrap">
+  <canvas id="c" width="640" height="400"></canvas>
+  <div id="hint">Chuột trái nhặt và đặt · chuột phải bỏ món đang cầm · lăn để cuộn đơn · R vòng mới · D khung bấm · S đổi độ nét · M tắt tiếng</div>
+</div>
+
+<script type="module" src="src/main.js"></script>
+</html>

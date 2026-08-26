@@ -170,7 +170,10 @@ export function draw(){
   cx.clearRect(0,0,W,H);
   if (bg.complete) cx.drawImage(bg, 0, 0);
 
+  // Tu lanh va thung rac chi co HAI trang thai, khong co dai khung hinh:
+  // dong nam san trong bg.png, mo la lop phu tu atlas de len (z = -0.1).
   if (S.fridgeOpen) blitTo(FRIDGE.source, FRIDGE.onScreen);
+  if (S.trashT > 0) blitTo(TRASH.source, TRASH.onScreen);
 
   // lo
   // Atlas chi co hai lop phu: lo mo co bot song, va lo mo co cookie chin.

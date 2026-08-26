@@ -33,7 +33,12 @@ Nếu bytecode không nói rõ và phải chọn một giá trị, ghi comment `
 và thêm vào `docs/backlog.md`. Đã có vài lần đoán sai vì suy từ tên biến — ví dụ
 `ToastedUpSource1` hoá ra là "còn một nửa bánh" chứ không phải "khe số 1".
 
-**5. Thư mục game trên Steam là chỉ đọc tuyệt đối.**
+**5. Chữ hiển thị cho người chơi viết bằng tiếng Anh.**
+Người chơi là cộng đồng người hâm mộ Nancy Drew, gần như toàn bộ nói tiếng Anh. Mọi chuỗi
+hiện lên màn hình — hàng phím tắt, thanh điểm, thông báo, phụ đề — đều tiếng Anh. Riêng
+tài liệu (`README.md`, `docs/`) và comment trong code thì giữ tiếng Việt.
+
+**6. Thư mục game trên Steam là chỉ đọc tuyệt đối.**
 Không ghi, xoá, đổi tên, hay di chuyển bất cứ thứ gì trong đó. Mọi thao tác với file
 trong đó phải dùng chế độ đọc (`"rb"`, `OpenRead`). Mọi kết quả xuất ra đều nằm trong
 thư mục dự án. Khi cần xử lý hàng loạt, hãy làm trên bản chép trong `extracted/`,

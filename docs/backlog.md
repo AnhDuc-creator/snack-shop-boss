@@ -44,7 +44,22 @@ Ghi ra day de sau nay khong ai "sua nham" lai.
 - **Thanh diem va hang phim tat** nam NGOAI khung 640x400. Trong khung la art goc,
   khong ve de len.
 
+## Da dieu tra xong - KHONG co viec de lam
+
+- **Animation tu lanh va thung rac: khong ton tai.** Da quet toan bo `s4210.luac`
+  tim cum `Rect.New` lien tiep (dang cua mot mang khung hinh) - ca file chi co
+  hai cum, deu la may nuong. `Cooking_SC.luac` co 0 cum.
+  Ban goc chi bat/tat MOT anh: trang thai dong nam san trong `bg.png`, trang thai
+  mo la lop phu tu atlas de len o `z = -0.1`.
+  Nen `FRIDGE.source` khong phai "mot o cat thieu khung" - no LA anh trang thai mo.
+  Dieu do cung giai thich vi sao `FRIDGE.items` co toa do nam gon trong o
+  `(2,2,188,247)`: chung la do tren ke cua chinh anh mo do.
+
 ## Da lam xong
+
+- **Nap thung rac.** Truoc day `TRASH.source` chua bao gio duoc ve nen nap khong
+  bao gio mo. Gio vut mon vao thi nap bat len trong `ovlDuration = 0.25` giay
+  roi dong lai. Tu lanh thi von da dung san.
 
 - **Phu de cho loi tan gau.** Bang phu de nam trong `convo_SC.luac` (1668 cap),
   khong phai `autotext_SC.luac` - ket luan "khong co phu de" truoc day sai vi tra

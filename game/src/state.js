@@ -42,6 +42,7 @@ function playThen(cue, next){
 export const S = {
   orders:[], scroll:0, scrollVel:0, contentH:0, held:null,
   fridgeOpen:false, fridgeT:0,
+  trashT:0,                    // nap thung rac bat len trong DUR.trashLid giay
   oven:{state:'empty', t:0},
   toaster:{state:'empty', food:null, count:0, t:0, frame:0},
   trays:[ {sandwich:[], slots:{}, vacantT:0}, {sandwich:[], slots:{}, vacantT:0} ],
@@ -157,7 +158,7 @@ export function click(x, y){
 
   // thung rac
   if (inR(TRASH.onScreen,x,y)){
-    if (S.held) play('trash.drop');
+    if (S.held){ play('trash.drop'); S.trashT = DUR.trashLid; }
     S.held = null; return;
   }
 
@@ -357,6 +358,8 @@ export function tick(dt){
     tray.vacantT -= dt;
     if (tray.vacantT <= 0){ tray.vacantT = 0; play('tray.arrive'); }
   }
+
+  if (S.trashT > 0) S.trashT -= dt;
 
   if (S.fridgeOpen){
     S.fridgeT -= dt;

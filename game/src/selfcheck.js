@@ -115,10 +115,10 @@ export async function runSelfCheck(){
 
 /** Mot dong tom tat de hien tren thanh duoi canvas. */
 export function summarise(r){
-  if (!r) return 'Đang kiểm tra…';
+  if (!r) return 'Checking…';
   if (r.thieu.length)
-    return `Thiếu ${r.thieu.length}/${r.tongThamChieu} file âm — xem Console (F12)`;
+    return `Missing ${r.thieu.length} of ${r.tongThamChieu} sound files — see Console (F12)`;
   const g = r.amThanh?.nhomGossipDaPhat ?? 0;
-  return `Đủ ${r.tongThamChieu} file âm · ${r.nhomGossip} nhóm tán gẫu (đã phát ${g})`
-       + (r.cueRong.length ? ` · ${r.cueRong.length} cue cố ý rỗng` : '');
+  return `All ${r.tongThamChieu} sound files present · ${r.nhomGossip} gossip groups (${g} played)`
+       + (r.cueRong.length ? ` · ${r.cueRong.length} cues intentionally silent` : '');
 }

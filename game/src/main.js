@@ -52,13 +52,13 @@ addEventListener('keydown', e => {
   if (k === 's') cv.classList.toggle('sharp');
   if (k === 'm'){
     toggleMute();
-    hint.textContent = getVolume() ? 'Âm thanh: bật' : 'Âm thanh: tắt';
-    setTimeout(() => { if (hint.textContent.startsWith('Âm thanh')) hint.textContent = ''; }, 1800);
+    hint.textContent = getVolume() ? 'Sound on' : 'Sound off';
+    setTimeout(() => { if (hint.textContent.startsWith('Sound')) hint.textContent = ''; }, 1800);
   }
   if (k === 'c'){
     const on = toggleCaptions();
-    hint.textContent = on ? 'Phụ đề: bật' : 'Phụ đề: tắt';
-    setTimeout(() => { if (hint.textContent.startsWith('Phụ đề')) hint.textContent = ''; }, 1800);
+    hint.textContent = on ? 'Captions on' : 'Captions off';
+    setTimeout(() => { if (hint.textContent.startsWith('Captions')) hint.textContent = ''; }, 1800);
   }
   if (k === 't'){
     hint.textContent = summarise(null);
@@ -72,14 +72,14 @@ initCaptions(document.getElementById('caption'));
 const statsEl = document.getElementById('stats');
 onStatsChange(st => {
   const parts = [
-    `Vòng đã xong <b>${st.rounds}</b>`,
-    `Credit <b>${st.credits}</b>`,
-    `Demerit <b>${st.demerits}</b>`,
+    `Rounds <b>${st.rounds}</b>`,
+    `Credits <b>${st.credits}</b>`,
+    `Demerits <b>${st.demerits}</b>`,
   ];
   if (st.teacherWins || st.teacherLosses)
-    parts.push(`Đơn giáo viên <b>${st.teacherWins}</b>&#8202;/&#8202;<b>${st.teacherWins + st.teacherLosses}</b>`);
+    parts.push(`Teacher orders <b>${st.teacherWins}</b>&#8202;/&#8202;<b>${st.teacherWins + st.teacherLosses}</b>`);
   const active = activeDemerits();
-  if (active > 0) parts.push(`Đang nợ <b>${active}</b>`);
+  if (active > 0) parts.push(`Owed <b>${active}</b>`);
   if (hasCookAchievement()) parts.push(`<span class="ach">Short Order Cook</span>`);
   statsEl.innerHTML = parts.join('');
 });
@@ -108,5 +108,5 @@ const start = () => {
 };
 atlas.onload = start; bg.onload = start;
 atlas.onerror = bg.onerror = () => {
-  hint.textContent = 'Thiếu game/assets/atlas.png hoặc bg.png — chạy: py tools/setup.py';
+  hint.textContent = 'Missing game/assets/atlas.png or bg.png — run: py tools/setup.py';
 };

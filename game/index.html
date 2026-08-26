@@ -10,8 +10,13 @@
   canvas.sharp{image-rendering:pixelated}
   #hint{position:absolute;left:0;right:0;bottom:-30px;text-align:center;
         font-size:12px;color:#7a7a7a;min-height:16px}
+  /* Phu de nam DUOI canvas, giong ban goc dat o thanh giao dien duoi vung choi */
+  #caption{margin-top:14px;min-height:34px;max-width:640px;text-align:center;
+           font-size:14px;line-height:1.35;color:#cfcfcf;opacity:0;
+           transition:opacity .18s}
+  #caption.on{opacity:1}
   #keys{display:flex;flex-wrap:wrap;gap:8px 18px;justify-content:center;
-        margin-top:52px;font-size:12px;color:#8d8d8d}
+        margin-top:18px;font-size:12px;color:#8d8d8d}
   #keys span{display:inline-flex;align-items:center;gap:6px}
   kbd{display:inline-block;min-width:19px;padding:2px 6px;text-align:center;
       font:600 11px/1.4 ui-monospace,Consolas,monospace;color:#e8e8e8;
@@ -27,6 +32,7 @@
 
 <div id="wrap">
   <canvas id="c" width="640" height="400"></canvas>
+  <div id="caption"></div>
   <div id="keys">
     <span><kbd>Chuột trái</kbd> nhặt và đặt</span>
     <span><kbd>Chuột phải</kbd> bỏ món đang cầm</span>
@@ -35,6 +41,7 @@
     <span><kbd>D</kbd> khung bấm</span>
     <span><kbd>S</kbd> độ nét</span>
     <span><kbd>M</kbd> tắt tiếng</span>
+    <span><kbd>C</kbd> phụ đề</span>
     <span><kbd>T</kbd> tự kiểm</span>
   </div>
   <div id="stats"></div>

@@ -7,6 +7,8 @@ import { S, newRound, click, scrollOrders, tick,
 import { initSound, toggleMute, getVolume } from './sound.js';
 import { onStatsChange, activeDemerits, hasCookAchievement } from './stats.js';
 import { runSelfCheck, summarise } from './selfcheck.js';
+import { startGossip, gossipIndex } from './gossip.js';
+import { initCaptions, toggleCaptions } from './captions.js';
 
 const cv = document.getElementById('c');
 const cx = cv.getContext('2d');
@@ -28,7 +30,10 @@ cv.addEventListener('pointermove', e => {
 addEventListener('pointerup', endScrollDrag);
 addEventListener('pointercancel', endScrollDrag);
 cv.addEventListener('pointerdown', e => {
-  initSound();                                    // trinh duyet chi cho phat sau cu bam dau
+  // Trinh duyet chi cho tao AudioContext sau mot cu cham cua nguoi dung, ma
+  // newRound() lai chay ngay luc nap xong anh - som hon. Nen gossip cua vong
+  // dau tien khong the khoi dong o do. Bat lai ngay sau khi am thanh san sang.
+  initSound().then(() => { if (gossipIndex() === 0) startGossip(); });
   // Cam ung khong co hover: phai cap nhat vi tri TRUOC khi xu ly bam,
   // neu khong thi cu cham dau tien se tinh vao cho con tro dang o cu.
   [S.mouse.x, S.mouse.y] = toCanvas(e);
@@ -50,6 +55,11 @@ addEventListener('keydown', e => {
     hint.textContent = getVolume() ? 'Âm thanh: bật' : 'Âm thanh: tắt';
     setTimeout(() => { if (hint.textContent.startsWith('Âm thanh')) hint.textContent = ''; }, 1800);
   }
+  if (k === 'c'){
+    const on = toggleCaptions();
+    hint.textContent = on ? 'Phụ đề: bật' : 'Phụ đề: tắt';
+    setTimeout(() => { if (hint.textContent.startsWith('Phụ đề')) hint.textContent = ''; }, 1800);
+  }
   if (k === 't'){
     hint.textContent = summarise(null);
     runSelfCheck().then(r => { hint.textContent = summarise(r); });
@@ -57,6 +67,8 @@ addEventListener('keydown', e => {
 });
 
 // Thanh diem duoi canvas. Cap nhat moi khi stats doi.
+initCaptions(document.getElementById('caption'));
+
 const statsEl = document.getElementById('stats');
 onStatsChange(st => {
   const parts = [

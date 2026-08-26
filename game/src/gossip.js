@@ -12,10 +12,12 @@
 // roi ca hai di tiep qua duong am tong cua sound.js (phim M) - tang nay la cua
 // ban web, ban goc khong co.
 //
-// Khong co phu de - tra ca 108 ten trong autotext_SC deu khong co, va cac khoi
-// AR:Sound gossip khong co truong text. La tieng nen co y de moc.
+// CO phu de. Ca 108 clip deu co, nam trong bang AutotextInit cua convo_SC (khong
+// phai autotext_SC - do la cho tim sai cua lan truoc). Da xuat ra
+// game/assets/gossip-captions.json, khoa trung ten clip o duoi. Xem spec muc 8.6.
 
 import { getAudioContext, getMasterNode, loadBuffer } from './sound.js';
+import { showCaption, hideCaption } from './captions.js';
 
 // --- hang so tu ban goc ---
 const CLIP_VOL   = 0.8;    // am luong tung clip
@@ -154,8 +156,13 @@ async function playClip(name, onDone){
   const clipGain = ctx.createGain();
   clipGain.gain.value = CLIP_VOL;
   src.connect(clipGain).connect(gain);
-  src.onended = () => { if (current === src) current = null; onDone && onDone(); };
+  src.onended = () => {
+    hideCaption(name);          // tu bo qua neu cau sau da chiem cho
+    if (current === src) current = null;
+    onDone && onDone();
+  };
   current = src;
+  showCaption(name);
   src.start();
 }
 

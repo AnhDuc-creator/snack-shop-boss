@@ -580,26 +580,71 @@ vol(t) = startVol + (endVol - startVol) * sin(clamp(t, 0, 1) * pi / 2)
 
 Đây là ease-out: đổi nhanh lúc đầu, chậm dần về cuối.
 
-### 8.6 Phụ đề — KHÔNG CÓ
+### 8.6 Phụ đề — CÓ, nằm trong `convo_SC`
 
-Hệ phụ đề của game là `autotext_SC.luac`, một bảng `AutotextInit:Create` ánh xạ
-**tên file âm thanh → chuỗi hiển thị**, ví dụ:
+Hệ phụ đề của game là các bảng `AutotextInit:Create`, ánh xạ
+**tên file âm thanh → chuỗi hiển thị**. Chuỗi mở đầu bằng thẻ màu người nói:
+`<c0>` là Nancy/Becca, `<c1>` là NPC. Bật/tắt bằng `ClosedCaptioning` trong `Waverly.INI`.
+
+Trong `extracted/lua/` có **hai** file dựng bảng này, không phải một:
+
+| File | Số cặp | Nội dung |
+|---|---|---|
+| `autotext_SC.luac` | 506 | thoại rời ngoài hội thoại (Cor*, Mel*, Izzy*, NWA*, …) |
+| `convo_SC.luac` | 1668 | toàn bộ thoại hội thoại — **và cả 108 câu gossip** |
+
+`catalog_SC.LUA` cũng gọi `AutotextInit:Create` nhưng là chữ trên phiếu mục lục thư viện,
+không có thẻ `<cN>`, không phải phụ đề.
+
+**Toàn bộ 108 clip gossip đều có phụ đề, tất cả đều gắn thẻ `<c1>`.** Ví dụ:
 
 ```
-Paige09_sfx  ->  <c1>Paige: Hello? Hel-lo?
-Mel04_sfx    ->  <c1>Yeah.
+Wig01_SFX            ->  <c1>All I said was she should try using brown mascara instead of black, and she totally wigged out!
+Girl1_Calc01_sfx     ->  <c1>Ya know, I hate to admit it, but I really like Calculus.
 ```
 
-Đã tra cả 108 tên file gossip trong bảng đó: **0 kết quả**. Không có `Girl1_*`, `Girl2_*`,
-cũng không có `Bliz01_SFX`, `Hot01_SFX`, `Wig01_SFX`, … Các khối `AR:Sound` của gossip cũng
-không có trường `text` hay `autotext` nào — chỉ có `sounds`, `channel`, `volume`, `active`.
+Bảng đầy đủ đã xuất ra `game/assets/gossip-captions.json`, dạng
+`{"<ten_clip_chu_thuong>": "<cau thoai da bo the <c1>>"}`, khoá trùng đúng tên dùng trong
+`GOSSIP` của `game/src/gossip.js` và tên file `.ogg` trong `game/assets/sound/`.
 
-Đối chiếu: hotspot món ăn trong `s4210` *có* trường `autotext = "UIFOOD01"` (mục 2). Tức là
-engine hoàn toàn hỗ trợ phụ đề ở chỗ này, nhưng gossip cố ý không dùng — nó là tiếng nền,
-không phải thoại có nội dung cần đọc.
+Cách moi lại:
 
-**Kết luận: bản dựng lại không cần và không nên hiện phụ đề cho gossip.** Không có chuỗi nào
-để mà lấy.
+```python
+from luaparse import parse
+from luatrace import trace
+f = parse('extracted/lua/convo_SC.luac')[0]
+t = trace(f)          # phang: ten_file, chuoi, ten_file, chuoi, ...
+```
+
+Sau hai token đầu (`AutotextInit`, `Create`) là các cặp liền nhau, không sót token nào —
+1668 cặp chẵn khít.
+
+#### Hai khoá gõ sai trong bản gốc
+
+Khớp thẳng tên clip được 106/108. Hai chỗ lệch là **lỗi gõ trong bảng phụ đề**, không phải
+thiếu phụ đề — không tồn tại file `.wav` nào mang tên đã gõ sai đó, và không clip nào bị
+bỏ lại không phụ đề:
+
+| File âm thật | Khoá trong `convo_SC` | Phụ đề |
+|---|---|---|
+| `Gross01_SFX.wav` | `Gross1_SFX` (thiếu số 0) | *Does this look gross or what...?* |
+| `Girl1_Char05_SFX.wav` | `GIRL1_Char04_sfx` (lặp `04`) | *Two months.* |
+
+Chỗ thứ hai xác nhận được bằng mạch hội thoại nhóm 13: G1 *"...advanced copy of Charleena
+Purcell's latest novel"* → G2 *"Dude! I love Charleena Purcell!"* → G1 *"I'm not supposed to
+pass it around"* → G2 *"I'll make your bed every day... for a month"* → G1 *"Two months."* →
+G2 *"Deal."* Câu thứ năm đúng là `Char05`, bảng phụ đề gõ nhầm thành `Char04` lần thứ hai.
+(Tên file gốc cũng có chỗ lệch hoa thường tương tự: `Girl2_CHar04_SFX.wav`.)
+
+#### Vì sao kết luận cũ sai
+
+Bản trước của mục này viết "phụ đề — KHÔNG CÓ", vì chỉ tra `autotext_SC.luac` rồi dừng.
+Gossip là thoại hội thoại nên phụ đề của nó nằm ở `convo_SC.luac`. Đây đúng cái bẫy đã ghi
+trong `CLAUDE.md` ở dạng khác: **đừng kết luận "không có" sau khi mới quét một file** —
+`AutotextInit:Create` được gọi ở nhiều nơi, phải quét hết rồi mới nói.
+
+Việc `AR:Sound` của gossip không có trường `text`/`autotext` không chứng minh được gì:
+phụ đề là hệ riêng của engine, tra ngược theo tên file lúc phát, không khai báo tại chỗ gọi.
 
 ### 8.7 Bẫy đã gặp
 
@@ -946,7 +991,7 @@ không phạt.
 
 ### 9.6 Âm thanh và phụ đề
 
-Khác gossip, **các câu ở đây đều có phụ đề** trong `autotext_SC`:
+Các câu ở đây đều có phụ đề trong `autotext_SC` (gossip cũng có, nhưng ở `convo_SC` — mục 8.6):
 
 | Scene | File | Kênh | Phụ đề |
 |---|---|---|---|

@@ -46,6 +46,15 @@ Ghi ra day de sau nay khong ai "sua nham" lai.
 
 ## Da lam xong
 
+- **Phu de cho loi tan gau.** Bang phu de nam trong `convo_SC.luac` (1668 cap),
+  khong phai `autotext_SC.luac` - ket luan "khong co phu de" truoc day sai vi tra
+  nham file. Xuat thanh `game/assets/gossip-captions.json`, 108 muc.
+  Module `game/src/captions.js`, hien o the HTML DUOI canvas dung nhu ban goc dat
+  phu de o thanh giao dien duoi vung choi. Phim `C` bat tat, nho qua cac phien
+  (tuong duong `ClosedCaptioning` trong `Waverly.INI`).
+  **Them hoi thoai moi khong can sua code**: bo file am vao `assets/sound/`, them
+  muc vao `gossip-captions.json`, them nhom vao `GOSSIP` trong `gossip.js`.
+
 - **Ho tro cam ung.** Doi tu mouse event sang pointer event, them
   `touch-action:none`. Cham vao vung cuon cua khung Orders thi nhay mot dong -
   cam ung khong co hover nen cuon tu dong khong dung duoc.

@@ -7,7 +7,9 @@
 // GitHub Pages thi CO. Loi kieu do chi lo ra khi da deploy, va rat kho lan.
 
 import { CUES } from './sound.js';
-import { GOSSIP } from './gossip.js';
+import * as sound from './sound.js';
+import { GOSSIP, gossipIndex } from './gossip.js';
+import { captionCount, captionsEnabled } from './captions.js';
 
 const DIR = 'assets/sound/';
 
@@ -69,8 +71,19 @@ export async function runSelfCheck(){
     });
   }
 
+  // trang thai am thanh - hay gap nhat la AudioContext chua duoc tao
+  const ctx = typeof sound.getAudioContext === 'function' ? sound.getAudioContext() : null;
+  const audio = {
+    coAudioContext: !!ctx,
+    trangThai: ctx ? ctx.state : 'chua tao',
+    nhomGossipDaPhat: gossipIndex(),
+    phuDeDaNap: captionCount(),
+    phuDeDangBat: captionsEnabled(),
+  };
+
   const report = {
     tongThamChieu: names.length,
+    amThanh: audio,
     tim_thay_ogg: found.ogg,
     tim_thay_wav: found.wav,
     thieu: missing,
@@ -81,7 +94,13 @@ export async function runSelfCheck(){
   console.group('%cTu kiem tra am thanh', 'font-weight:bold');
   console.log(`Tham chieu: ${report.tongThamChieu} file `
             + `(${found.ogg} .ogg + ${found.wav} .wav)`);
-  console.log(`Nhom gossip: ${GOSSIP.length}`);
+  console.log(`Nhom gossip: ${GOSSIP.length} · da phat ${audio.nhomGossipDaPhat} nhom`);
+  console.log(`AudioContext: ${audio.coAudioContext ? audio.trangThai : 'CHUA TAO'}`);
+  console.log(`Phu de: ${audio.phuDeDaNap} muc, ${audio.phuDeDangBat ? 'dang bat' : 'dang tat'}`);
+  if (!audio.phuDeDaNap) console.warn('Chua nap duoc gossip-captions.json');
+  if (!GOSSIP.length) console.warn('Bang GOSSIP rong - chua dien du lieu.');
+  if (ctx && ctx.state === 'suspended')
+    console.warn('AudioContext dang suspended - trinh duyet chua cho phat.');
   if (emptyCues.length) console.log('Cue chua co file:', emptyCues.join(', '));
   if (missing.length){
     console.warn(`THIEU ${missing.length} file:`);
@@ -99,6 +118,7 @@ export function summarise(r){
   if (!r) return 'Đang kiểm tra…';
   if (r.thieu.length)
     return `Thiếu ${r.thieu.length}/${r.tongThamChieu} file âm — xem Console (F12)`;
-  return `Đủ ${r.tongThamChieu} file âm · ${r.nhomGossip} nhóm tán gẫu`
+  const g = r.amThanh?.nhomGossipDaPhat ?? 0;
+  return `Đủ ${r.tongThamChieu} file âm · ${r.nhomGossip} nhóm tán gẫu (đã phát ${g})`
        + (r.cueRong.length ? ` · ${r.cueRong.length} cue cố ý rỗng` : '');
 }

@@ -37,6 +37,14 @@ const FADE_SEC = 1.0;
 // Doi thanh false de tro ve dung ban goc.
 const LOOP_WHEN_EXHAUSTED = true;
 
+// CO Y LECH BAN GOC.
+// Ban goc moi lan vao scene chi phat DUNG MOT nhom roi im den lan vao sau -
+// dung, vi nguoi choi ra vao quay lien tuc nen im lang khong keo dai. O day mot
+// vong don keo may phut lien, giu nguyen thi phan lon vong la im.
+// Nen: het mot nhom thi doi ngau nhien tung nay giay roi phat nhom ke tiep,
+// van trong cung mot vong. Dat null de tro ve dung ban goc.
+const REPEAT_GAP = [25, 45];   // giay
+
 /**
  * 21 nhom, dung thu tu ban goc (gossip1..gossip21).
  *   lines    - ten clip theo dung thu tu doi dap
@@ -121,10 +129,29 @@ export const GOSSIP = [
     faderEnd:3, solo:null },
 ];
 
+// --- nho tien do qua cac phien ---
+// Ban goc giu VarTable.Gossip trong savegame, nen doi thoai khong bat dau lai tu
+// nhom 1 moi lan choi. Bien module thi reset moi lan tai trang, nen cat vao
+// localStorage - cung cach stats.js va captions.js dung.
+const KEY = 'snackshop.gossip';
+
+function loadProgress(){
+  try {
+    const v = parseInt(localStorage.getItem(KEY), 10);
+    // > GOSSIP.length nghia la bang da ngan di sau mot ban cap nhat: bo, dem lai
+    if (Number.isInteger(v) && v >= 0 && v <= GOSSIP.length) return v;
+  } catch { /* dung 0 */ }
+  return 0;
+}
+function saveProgress(){
+  try { localStorage.setItem(KEY, String(groupIndex)); } catch { /* bo qua */ }
+}
+
 // --- trang thai ---
 let ctx = null;
 let gain = null;              // node dieu am kenh Voice1
-let groupIndex = 0;           // tuong ung VarTable.Gossip
+let groupIndex = loadProgress();   // tuong ung VarTable.Gossip
+let started = false;          // startGossip da chay duoc lan nao chua (can AudioContext)
 let timer = null;             // setTimeout dang cho
 let current = null;           // BufferSource dang phat
 let running = false;
@@ -166,8 +193,11 @@ async function playClip(name, onDone){
   src.start();
 }
 
-/** Phat chuoi doi dap, moi cau doi cau truoc ket thuc dung nhu closure `.done`. */
-function playChain(group){
+/**
+ * Phat chuoi doi dap, moi cau doi cau truoc ket thuc dung nhu closure `.done`.
+ * `onDone` goi mot lan khi ca nhom - ke ca cau doc thoai - da het.
+ */
+function playChain(group, onDone){
   const faderEnd = group.faderEnd ?? group.lines.length - 1;
   let i = 0;
   fadeChannel(CH_TALKING);
@@ -176,24 +206,53 @@ function playChain(group){
     if (!running) return;
     if (i > 0 && i - 1 === faderEnd) fadeChannel(CH_IDLE);   // fader tut sau clip nay
     if (i >= group.lines.length){
-      if (group.solo){
-        const solo = Array.isArray(group.solo) ? group.solo : [group.solo];
-        timer = setTimeout(() => {
-          fadeChannel(CH_TALKING);
-          let s = 0;
-          const nextSolo = () => {          // noi nhau bang `.done`, giong chuoi doi dap
-            if (!running) return;
-            if (s >= solo.length){ fadeChannel(CH_IDLE); return; }
-            playClip(solo[s++], nextSolo);
-          };
-          nextSolo();
-        }, rnd(SOLO_MIN, SOLO_MAX) * 1000);
-      }
+      if (!group.solo){ onDone && onDone(); return; }
+      const solo = Array.isArray(group.solo) ? group.solo : [group.solo];
+      timer = setTimeout(() => {
+        fadeChannel(CH_TALKING);
+        let s = 0;
+        const nextSolo = () => {          // noi nhau bang `.done`, giong chuoi doi dap
+          if (!running) return;
+          if (s >= solo.length){ fadeChannel(CH_IDLE); onDone && onDone(); return; }
+          playClip(solo[s++], nextSolo);
+        };
+        nextSolo();
+      }, rnd(SOLO_MIN, SOLO_MAX) * 1000);
       return;
     }
     playClip(group.lines[i++], next);
   };
   next();
+}
+
+/** Nhom ke tiep, hoac null neu da het bang va LOOP_WHEN_EXHAUSTED tat. */
+function takeGroup(){
+  if (groupIndex >= GOSSIP.length){
+    if (!LOOP_WHEN_EXHAUSTED) return null;    // ban goc: im lang vinh vien
+    groupIndex = 0;
+  }
+  const group = GOSSIP[groupIndex++];
+  saveProgress();
+  return group;
+}
+
+/** Nap truoc ca nhom roi hen gio phat sau `delaySec` giay. */
+function runGroup(group, delaySec){
+  // Nap truoc ca nhom trong luc dang dem. Khong await: cho o day thi dong ho
+  // khong chay, con de nap lui thi giua hai cau lo khoang lang cho tai.
+  for (const name of [...group.lines, ...(group.solo ? [group.solo].flat() : [])]){
+    loadBuffer(name).catch(() => {});   // hong mot clip thi playClip tu bo qua
+  }
+  clearTimer();
+  timer = setTimeout(() => playChain(group, afterGroup), delaySec * 1000);
+}
+
+/** Het mot nhom. Ban goc dung han o day - xem REPEAT_GAP. */
+function afterGroup(){
+  if (!running || paused || !REPEAT_GAP) return;
+  const group = takeGroup();
+  if (!group) return;
+  runGroup(group, rnd(REPEAT_GAP[0], REPEAT_GAP[1]));
 }
 
 /** Goi khi bat dau mot vong don moi - tuong duong "vao scene" o ban goc. */
@@ -209,21 +268,13 @@ export function startGossip(){
     gain.connect(getMasterNode());   // qua duong am tong de phim M voi toi
   }
 
-  if (groupIndex >= GOSSIP.length){
-    if (!LOOP_WHEN_EXHAUSTED) return;    // ban goc: im lang vinh vien
-    groupIndex = 0;
-  }
-  const group = GOSSIP[groupIndex++];
+  const group = takeGroup();
+  if (!group) return;
   running = true;
-
-  // Nap truoc ca nhom trong luc dang dem 2-10 giay. Khong await: cho o day thi
-  // dong ho khong chay, con de nap lui thi giua hai cau lo khoang lang cho tai.
-  for (const name of [...group.lines, ...(group.solo ? [group.solo].flat() : [])]){
-    loadBuffer(name).catch(() => {});   // hong mot clip thi playClip tu bo qua
-  }
+  started = true;
 
   // math.random(2,10) chay MOT lan luc nap scene, khong phai moi cau mot lan
-  timer = setTimeout(() => playChain(group), rnd(DELAY_MIN, DELAY_MAX) * 1000);
+  runGroup(group, rnd(DELAY_MIN, DELAY_MAX));
 }
 
 export function stopGossip(){
@@ -247,3 +298,15 @@ export function isPaused(){ return paused; }
 
 /** Nhom se phat o vong ke tiep - tien cho che do debug. */
 export function gossipIndex(){ return groupIndex; }
+
+/**
+ * startGossip da khoi dong duoc lan nao chua. KHONG suy tu gossipIndex(): tu khi
+ * groupIndex nam trong localStorage, no khac 0 ngay tu luc tai trang.
+ */
+export function gossipStarted(){ return started; }
+
+/** Quen tien do, quay ve nhom 1 - cho che do debug va nut reset. */
+export function resetGossip(){
+  groupIndex = 0;
+  saveProgress();
+}

@@ -31,8 +31,14 @@ Quy tac duoi file - QUAN TRONG, dung sai la mat chat luong:
 
 Ben trong .HIS da la Vorbis san roi, nen viec "chuyen sang wav" cho nhom codec 2
 khong lay lai duoc gi - mat mat xay ra tu luc Her Interactive dong goi.
+
+Vi hai nhom nam lan lon trong cung mot thu muc, buoc cuoi con ghi ra
+game/assets/sound/index.json dang {"ten_file": "wav"|"ogg"} de sound.js biet
+truoc duoi file. Khong co no thi ben web phai thu .ogg roi moi .wav, tuc 46
+file nhom PCM deu an mot lan 404 truoc khi tai dung.
 """
 
+import json
 import os
 import re
 import shutil
@@ -170,6 +176,25 @@ def stage_from_game(game_dir, names, src_dir=SRC_DIR):
     return copied, missing
 
 
+def write_index(converted, out_dir=OUT_DIR):
+    """Ghi bang tra `ten_file -> duoi` cho sound.js. Tra ve so muc da ghi.
+
+    `converted` la ket qua that su cua lan doi vua roi nen no la nguon dung
+    nhat. Quet them thu muc de bat cac file them tay (easter egg, xem
+    captions.js) - thieu chung thi rieng chung lai roi ve cach thu hai duoi.
+    """
+    index = dict(converted)
+    for f in sorted(os.listdir(out_dir)):
+        stem, ext = os.path.splitext(f)
+        if ext in (".wav", ".ogg") and stem not in index:
+            index[stem] = ext[1:]
+
+    with open(os.path.join(out_dir, "index.json"), "w", encoding="utf-8") as f:
+        json.dump(index, f, indent=0, sort_keys=True)   # moi khoa mot dong, de doc diff
+        f.write("\n")
+    return len(index)
+
+
 def build(names=None, src_dir=SRC_DIR, out_dir=OUT_DIR, quiet=False):
     """Doi moi am trong `names` tu src_dir sang out_dir. Tra ve (so_wav, so_ogg, thieu)."""
     names = names or needed_sounds()
@@ -178,20 +203,26 @@ def build(names=None, src_dir=SRC_DIR, out_dir=OUT_DIR, quiet=False):
 
     n_wav = n_ogg = 0
     missing = []
+    converted = {}
     for n in names:
         real = have.get(n.lower())
         if not real:
             missing.append(n)
             continue
-        _, codec = convert(os.path.join(src_dir, real), out_dir)
+        out, codec = convert(os.path.join(src_dir, real), out_dir)
+        stem, ext = os.path.splitext(out)
+        converted[stem] = ext[1:]
         if codec == CODEC_PCM:
             n_wav += 1
         else:
             n_ogg += 1
 
+    n_index = write_index(converted, out_dir)
+
     if not quiet:
         print("  %d file .wav (PCM giu nguyen), %d file .ogg (Vorbis ban goc)"
               % (n_wav, n_ogg))
+        print("  index.json: %d muc" % n_index)
         if missing:
             print("   THIEU %d file nguon:" % len(missing), ", ".join(missing[:8]))
     return n_wav, n_ogg, missing

@@ -41,6 +41,10 @@ Ghi ra day de sau nay khong ai "sua nham" lai.
   buong ra la bien mat nen khong che art luc binh thuong.
 - **Vach thoi gian vong giao vien.** Ban goc chi bao bang tieng chuong.
 - **Gossip quay vong khi het 21 nhom.** Xem `LOOP_WHEN_EXHAUSTED` trong `gossip.js`.
+- **Gossip phat nhieu nhom trong mot vong.** Ban goc moi lan vao scene chi phat dung
+  mot nhom - hop ly vi nguoi choi ra vao quay lien tuc. O day mot vong keo may phut
+  nen phan lon thoi gian se im. `REPEAT_GAP` trong `gossip.js` cho phat nhom ke tiep
+  sau 25-45 giay im lang, van trong cung vong; dat `null` la tro ve ban goc.
 - **Thanh diem va hang phim tat** nam NGOAI khung 640x400. Trong khung la art goc,
   khong ve de len.
 

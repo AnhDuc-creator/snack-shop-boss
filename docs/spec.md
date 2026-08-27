@@ -412,6 +412,11 @@ Cộng thêm 108 clip tán gẫu (mục 8) và 14 âm vòng giáo viên (mục 9
 đặt tên viết thường và bỏ hậu tố `_SFX`. Nó xuất phát từ sáu scene (`s4210` và `s4230`–`s4234`)
 vì năm scene vòng giáo viên nối nhau bằng `AR:NavLogic`, không phải `Scene:Include`. `tools/setup.py` gọi nó ở bước 3.
 
+Vì hai nhóm đuôi file nằm lẫn trong cùng một thư mục, bước đổi âm ghi kèm
+`game/assets/sound/index.json` dạng `{"tên_file": "wav"|"ogg"}`. `sound.js` nạp bảng này
+một lần lúc khởi động rồi tra thẳng đuôi; không có nó thì phải thử `.ogg` trước, tức 46 file
+PCM đều ăn một lần 404 trước khi tải đúng. Thiếu file thì bên web tự quay về cách thử hai đuôi.
+
 ---
 
 ## 8. Lời tán gẫu của khách (gossip)
@@ -421,6 +426,7 @@ Nguồn: `GossipVOs_SC.luac` — 171 khối AR, 151 closure, 108 file âm thanh.
 khác include file này**, nên lời tán gẫu chỉ tồn tại trong minigame quầy đồ ăn.
 
 Bộ đếm `VarTable.Gossip` nằm trong savegame. Không file `.luac` nào khác đụng vào nó.
+Bản web giữ tương đương trong `localStorage`, khoá `snackshop.gossip`.
 
 ### 8.1 Cơ chế — bốn khối điều khiển
 

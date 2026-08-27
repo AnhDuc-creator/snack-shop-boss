@@ -184,6 +184,8 @@ const buffers = new Map();      // ten file -> AudioBuffer
 const playing = new Map();      // kenh -> BufferSource dang chay
 const pending = new Map();      // ten file -> Promise dang nap (tranh fetch trung)
 let loadedAll = false;          // initSound da nap het CUES chua
+let index = null;               // ten file -> 'wav' | 'ogg', null = khong co bang tra
+let indexReq = null;            // Promise nap index.json, chi chay mot lan
 
 function ensureCtx(){
   if (ctx || !enabled) return ctx;
@@ -196,10 +198,30 @@ function ensureCtx(){
   return ctx;
 }
 
+/**
+ * Nap bang tra duoi file, mot lan cho ca phien. `tools/sound_assets.py` sinh ra
+ * no cung luc doi am, nen khong bao gio lech voi thu muc.
+ *
+ * Hong hay thieu file thi de `index` la null - loadOne quay ve cach thu hai duoi,
+ * van chay dung, chi ton them mot lan 404.
+ */
+function loadIndex(){
+  if (!indexReq){
+    indexReq = fetch(DIR + 'index.json')
+      .then(r => r.ok ? r.json() : null)
+      .then(j => { index = (j && typeof j === 'object') ? j : null; })
+      .catch(() => { index = null; });
+  }
+  return indexReq;
+}
+
 // Nhom PCM tho giu `.wav` lossless, nhom Vorbis giu `.ogg`.
-// Thu lan luot hai duoi thay vi giu bang tra - them file moi khong phai sua code.
+// Co index.json thi di thang den duoi dung; khong co - hoac file khong nam trong
+// bang, nhu am them tay - thi thu lan luot ca hai duoi nhu truoc.
 async function loadOne(name){
-  for (const ext of ['.ogg', '.wav']){
+  await loadIndex();
+  const known = index && index[name];
+  for (const ext of known ? ['.' + known] : ['.ogg', '.wav']){
     try {
       const res = await fetch(DIR + name + ext);
       if (!res.ok) continue;
@@ -219,6 +241,7 @@ export async function initSound(){
   // mot clip gossip vao truoc la ca bang CUES bi bo qua.
   if (loadedAll) return;
   loadedAll = true;
+  await loadIndex();            // mot lan, truoc khi 200 lan fetch dua nhau chay
   const names = [...new Set(Object.values(CUES).flatMap(c => c.files))];
   await Promise.all(names.map(n => loadBuffer(n)));
 }

@@ -7,7 +7,7 @@ import { S, newRound, click, scrollOrders, tick,
 import { initSound, toggleMute, getVolume } from './sound.js';
 import { onStatsChange, activeDemerits, hasCookAchievement } from './stats.js';
 import { runSelfCheck, summarise } from './selfcheck.js';
-import { startGossip, gossipIndex } from './gossip.js';
+import { startGossip, gossipStarted } from './gossip.js';
 import { initCaptions, toggleCaptions } from './captions.js';
 
 const cv = document.getElementById('c');
@@ -33,7 +33,7 @@ cv.addEventListener('pointerdown', e => {
   // Trinh duyet chi cho tao AudioContext sau mot cu cham cua nguoi dung, ma
   // newRound() lai chay ngay luc nap xong anh - som hon. Nen gossip cua vong
   // dau tien khong the khoi dong o do. Bat lai ngay sau khi am thanh san sang.
-  initSound().then(() => { if (gossipIndex() === 0) startGossip(); });
+  initSound().then(() => { if (!gossipStarted()) startGossip(); });
   // Cam ung khong co hover: phai cap nhat vi tri TRUOC khi xu ly bam,
   // neu khong thi cu cham dau tien se tinh vao cho con tro dang o cu.
   [S.mouse.x, S.mouse.y] = toCanvas(e);

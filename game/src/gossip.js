@@ -202,17 +202,23 @@ function playChain(group, onDone){
   let i = 0;
   fadeChannel(CH_TALKING);
 
+  // Moi cho noi chuoi deu phai kiem CA `running` LAN `paused`. Ly do: pauseGossip
+  // goi current.stop(), ma stop() van ban `ended`, nen onDone cua clip dang phat
+  // van chay - khong chan thi chuoi tu noi tiep het ca nhom du dang tam dung.
+  const alive = () => running && !paused;
+
   const next = () => {
-    if (!running) return;
+    if (!alive()) return;
     if (i > 0 && i - 1 === faderEnd) fadeChannel(CH_IDLE);   // fader tut sau clip nay
     if (i >= group.lines.length){
       if (!group.solo){ onDone && onDone(); return; }
       const solo = Array.isArray(group.solo) ? group.solo : [group.solo];
       timer = setTimeout(() => {
+        if (!alive()) return;             // tam dung trong luc dem khoang im
         fadeChannel(CH_TALKING);
         let s = 0;
         const nextSolo = () => {          // noi nhau bang `.done`, giong chuoi doi dap
-          if (!running) return;
+          if (!alive()) return;
           if (s >= solo.length){ fadeChannel(CH_IDLE); onDone && onDone(); return; }
           playClip(solo[s++], nextSolo);
         };
@@ -285,12 +291,18 @@ export function stopGossip(){
 }
 
 /**
- * Curfew_FL va vong don giao vien deu chan bang cach giu dong ho khong chay,
- * nen la TAM DUNG roi chay tiep, khong dem lai tu dau.
+ * CO Y LECH BAN GOC.
+ * Ban goc chan bang cach giu dong ho khong chay (gossipDelay.active kiem
+ * `not teacherRoundTimer.active`), nen la tam dung roi chay tiep dung cho cu.
+ * O day tam dung la BO HAN nhom dang phat: vao vong giao vien thi quay phai im
+ * ngay lap tuc, khong con cau nao noi not. Nhom ke tiep se phat o vong sau -
+ * groupIndex da tang luc startGossip nen nhom bi bo la mat luon, dung nhu y do.
  */
 export function pauseGossip(on){
   if (on === paused) return;
   paused = on;
+  // Dat `paused` TRUOC khi stop(): stop() ban `ended` dong bo, va handler do doc
+  // co nay de biet khong duoc noi chuoi tiep.
   if (on){ clearTimer(); if (current) try { current.stop(); } catch { /* da dung */ } }
 }
 

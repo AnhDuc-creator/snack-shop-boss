@@ -45,6 +45,12 @@ Ghi ra day de sau nay khong ai "sua nham" lai.
   mot nhom - hop ly vi nguoi choi ra vao quay lien tuc. O day mot vong keo may phut
   nen phan lon thoi gian se im. `REPEAT_GAP` trong `gossip.js` cho phat nhom ke tiep
   sau 25-45 giay im lang, van trong cung vong; dat `null` la tro ve ban goc.
+- **Tam dung gossip la bo han nhom dang phat.** Ban goc chan bang cach giu dong ho
+  `gossipDelay` khong chay, nen la tam dung roi noi tiep dung cho cu. O day
+  `pauseGossip(true)` cat luon nhom dang phat: vao vong giao vien thi quay im ngay,
+  khong con cau nao noi not. Nhom ke tiep phat o vong sau. Xem `playChain` trong
+  `gossip.js` - moi cho noi chuoi kiem ca `running` lan `paused`, vi `stop()` van
+  ban `ended` nen khong chan thi chuoi tu chay het nhom du dang tam dung.
 - **Thanh diem va hang phim tat** nam NGOAI khung 640x400. Trong khung la art goc,
   khong ve de len.
 

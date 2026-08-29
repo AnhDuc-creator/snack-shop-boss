@@ -87,9 +87,8 @@ export function drawTray(tray, ti){
 export function drawOrders(){
   const a = ORDERS_UI.area, lh = ORDERS_UI.textHeight;
   const padL = 6, padT = 3;
-  const padR = ORDERS_UI.bar.width + ORDERS_UI.bar.margin * 2;
   cx.save();
-  cx.beginPath(); cx.rect(a[0], a[1], rw(a) - padR, rh(a)); cx.clip();
+  cx.beginPath(); cx.rect(a[0], a[1], rw(a), rh(a)); cx.clip();
   cx.font = '11px Georgia, serif';
   cx.textBaseline = 'alphabetic';
   cx.fillStyle = '#111';
@@ -117,10 +116,12 @@ export function drawOrders(){
 function drawScrollBar(){
   const b = scrollBarRect();
   if (!b) return;
-  cx.fillStyle = 'rgba(20,40,60,.25)';
-  cx.fillRect(b.track[0], b.track[1], rw(b.track), rh(b.track));
-  cx.fillStyle = 'rgba(30,60,90,.75)';
-  cx.fillRect(b.thumb[0], b.thumb[1], rw(b.thumb), rh(b.thumb));
+  // Ray da co san trong anh nen (khe xanh dam) nen chi ve nut truot.
+  cx.fillStyle = 'rgba(196,214,228,.92)';
+  cx.fillRect(b.thumb[0] + 1, b.thumb[1], rw(b.thumb) - 2, rh(b.thumb));
+  cx.strokeStyle = 'rgba(40,70,95,.8)';
+  cx.lineWidth = 1;
+  cx.strokeRect(b.thumb[0] + 1.5, b.thumb[1] + .5, rw(b.thumb) - 3, rh(b.thumb) - 1);
 }
 
 /**
@@ -128,6 +129,33 @@ function drawScrollBar(){
  * O day ve mot vach mong duoi khung Orders: xanh khi con trong cua credit,
  * do khi da qua. Doi mau chu khong hien so, giu tinh than "nghe chu khong nhin".
  */
+/** Thong bao cuoi vong. Chu tieng Anh vi nguoi choi la cong dong noi tieng Anh. */
+function drawFlashMessage(){
+  const f = S.flash;
+  let main = 'All orders filled', sub = '';
+
+  if (f.teacher === 'credit')       { main = 'Teacher order served in time'; sub = '+1 credit'; }
+  else if (f.teacher === 'none')    { main = 'Teacher order served';         sub = 'Too slow for a credit'; }
+  else if (f.teacher === 'demerit') { main = 'Teacher order failed';         sub = '+1 demerit'; }
+  else if (f.reward)                { sub  = `+${f.reward} credits`; }
+
+  cx.textAlign = 'center';
+  cx.fillStyle = 'rgba(0,0,0,.55)';
+  cx.font = '20px Georgia, serif';
+  cx.fillText(main, W/2 + 1, H/2 + 1);
+  cx.fillStyle = '#fff';
+  cx.fillText(main, W/2, H/2);
+
+  if (sub){
+    cx.font = '13px Georgia, serif';
+    cx.fillStyle = 'rgba(0,0,0,.55)';
+    cx.fillText(sub, W/2 + 1, H/2 + 23);
+    cx.fillStyle = f.teacher === 'demerit' ? '#ffb4b4' : '#c8e6a0';
+    cx.fillText(sub, W/2, H/2 + 22);
+  }
+  cx.textAlign = 'left';
+}
+
 function drawTeacherTimer(a){
   const T = S.teacher;
   const w = rw(a);
@@ -202,10 +230,7 @@ export function draw(){
   if (S.flash && S.flash.t > 0){
     cx.fillStyle = S.flash.ok ? 'rgba(60,200,90,.20)' : 'rgba(220,60,60,.20)';
     cx.fillRect(0,0,W,H);
-    if (S.flash.done){
-      cx.fillStyle = '#fff'; cx.font = '20px Georgia, serif'; cx.textAlign = 'center';
-      cx.fillText('Xong mot vong', W/2, H/2); cx.textAlign = 'left';
-    }
+    if (S.flash.done) drawFlashMessage();
   }
 
   if (S.debug) drawDebug();

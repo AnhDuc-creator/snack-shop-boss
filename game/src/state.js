@@ -268,17 +268,15 @@ function scrollMax(){
 
 /** Hinh hoc thanh cuon o mep phai khung Orders. Tra ve null neu khong can cuon. */
 export function scrollBarRect(){
-  const a = ORDERS_UI.area, B = ORDERS_UI.bar;
+  const a = ORDERS_UI.area, t = ORDERS_UI.bar.track;
   const max = scrollMax();
   if (max <= 0) return null;
-  const trackX = a[2] - B.width - B.margin;
-  const trackY = a[1] + B.margin;
-  const trackH = rh(a) - B.margin * 2;
+  const trackY = t[1], trackH = t[3] - t[1];
   const ratio  = rh(a) / S.contentH;
-  const thumbH = Math.max(B.minThumb, trackH * ratio);
+  const thumbH = Math.max(ORDERS_UI.bar.minThumb, trackH * ratio);
   const thumbY = trackY + (trackH - thumbH) * (S.scroll / max);
-  return {track:[trackX, trackY, trackX + B.width, trackY + trackH],
-          thumb:[trackX, thumbY, trackX + B.width, thumbY + thumbH],
+  return {track:[t[0], trackY, t[2], t[3]],
+          thumb:[t[0], thumbY, t[2], thumbY + thumbH],
           trackY, trackH, thumbH, max};
 }
 

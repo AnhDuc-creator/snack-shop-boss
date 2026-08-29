@@ -128,7 +128,10 @@ export const ORDERS_UI = {
   // co thanh cuon. Choi thu thay phien vi chuot di ngang qua la danh sach chay.
   // Doi AUTO_SCROLL thanh true de tro ve dung ban goc.
   autoScroll:false,
-  bar:{width:5, margin:2, minThumb:14},
+  // Khung Orders CO SAN mot khe cuon mau xanh dam trong anh nen, o x 628-636.
+  // Do bang cach quet do sang tung cot cua bg.png. Vung chu la 499-625, khe nam
+  // ngoai vung do nen ve thanh cuon vao day khong che mat chu.
+  bar:{track:[628, 27, 636, 152], minThumb:14},
 };
 
 export const BACK_HS = [207,365,502,399];

@@ -9,6 +9,15 @@ import { startGossip, stopGossip, pauseGossip } from './gossip.js';
 import { recordRound, recordTeacher } from './stats.js';
 import { inR, rh } from './render.js';
 
+// Tren cam ung, hotspot nho nhat (qua cam trong tu lanh, 27x22) chi khoang 3.5mm
+// tren dien thoai nam ngang. Noi rong vung bam mot chut cho de trung.
+// CHI ap dung cho cac tram - KHONG ap dung cho o tren khay, vi o `fruit` va
+// `sandwich` cua khay trai chi cach nhau 3px, noi ra la bam nham.
+const TOUCH_PAD = (typeof matchMedia === 'function'
+                   && matchMedia('(pointer:coarse)').matches) ? 3 : 0;
+const hit = (r, x, y) => x >= r[0] - TOUCH_PAD && x < r[2] + TOUCH_PAD
+                      && y >= r[1] - TOUCH_PAD && y < r[3] + TOUCH_PAD;
+
 // Tuong duong VarTable cua ban goc: nguong thoi gian nho qua cac phien choi.
 const STORE_KEY = 'snackshop.teacher';
 const SEEN_KEY  = 'snackshop.teacherSeen';   // tuong duong REC_Initialize_FL
@@ -154,10 +163,10 @@ export function click(x, y){
   if (beginScrollDrag(x, y)) return;
 
   // nut Pick Up
-  for (let i=0;i<2;i++) if (inR(TRAYS[i].button.onScreen,x,y)) return tryPickUp(i);
+  for (let i=0;i<2;i++) if (hit(TRAYS[i].button.onScreen,x,y)) return tryPickUp(i);
 
   // thung rac
-  if (inR(TRASH.onScreen,x,y)){
+  if (hit(TRASH.onScreen,x,y)){
     if (S.held){ play('trash.drop'); S.trashT = DUR.trashLid; }
     S.held = null; return;
   }
@@ -182,12 +191,12 @@ export function click(x, y){
   }
 
   // tu lanh
-  if (inR(FRIDGE.hotspot,x,y) && !S.fridgeOpen){
+  if (hit(FRIDGE.hotspot,x,y) && !S.fridgeOpen){
     S.fridgeOpen = true; S.fridgeT = DUR.fridgeOpen; play('fridge.open'); return;
   }
   if (S.fridgeOpen){
     for (const [name,r] of Object.entries(FRIDGE.items))
-      if (inR(r,x,y) && !S.held){
+      if (hit(r,x,y) && !S.held){
         S.held = name; S.fridgeT = DUR.fridgeOpen;
         playPick('fridge', name); return;
       }
@@ -199,7 +208,7 @@ export function click(x, y){
   // Khong co "mo ma rong" - nen cam bot bam mot cai la vao lo luon,
   // khong phai bam mot lan mo cua roi bam lan nua moi bo duoc.
   const o = S.oven;
-  if (inR(OVEN.openHs,x,y)){
+  if (hit(OVEN.openHs,x,y)){
     if (o.state === 'empty' && S.held === 'cookieDough'){
       S.held = null; o.state = 'openUnbaked'; play('oven.doughIn'); return;
     }
@@ -211,7 +220,7 @@ export function click(x, y){
       S.held = 'cookieDough'; o.state = 'empty'; return;
     }
   }
-  if (inR(OVEN.closeHs,x,y)){
+  if (hit(OVEN.closeHs,x,y)){
     if (o.state === 'openUnbaked'){
       o.state = 'baking'; o.t = DUR.bake; play('oven.close'); return;
     }
@@ -220,7 +229,7 @@ export function click(x, y){
 
   // may nuong: mot lan nuong cho ra HAI nua banh
   const t = S.toaster;
-  if (inR(TOASTER.placeHs,x,y)){
+  if (hit(TOASTER.placeHs,x,y)){
     if (t.state === 'empty' && S.held && FOODS[S.held]?.bun && !S.held.includes('Toasted')){
       t.food = S.held; t.state = 'full'; t.count = 1; S.held = null;
       play('toaster.in'); return;
@@ -234,13 +243,13 @@ export function click(x, y){
       S.held = t.food; t.food = null; t.state = 'empty'; play('toaster.out'); return;
     }
   }
-  if (inR(TOASTER.startHs,x,y) && t.state === 'full'){
+  if (hit(TOASTER.startHs,x,y) && t.state === 'full'){
     t.state = 'toasting'; t.t = DUR.toast; t.frame = 0; play('toaster.lever'); return;
   }
 
   // lay nguyen lieu tren quay
   if (!S.held) for (const [name,r] of Object.entries(DISPENSERS))
-    if (inR(r,x,y)){ S.held = name; playPick('counter', name); return; }
+    if (hit(r,x,y)){ S.held = name; playPick('counter', name); return; }
 
   // dat len khay
   if (S.held){

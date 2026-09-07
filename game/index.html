@@ -1,37 +1,90 @@
 <!doctype html>
 <html lang="en">
 <meta charset="utf-8">
+<!-- Thieu the nay thi trinh duyet di dong dung trang o chieu rong ao 980px roi
+     thu nho ca trang xuong - canvas trong to nhung thuc te be ti, cham khong trung. -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Snack Shop Boss</title>
 <style>
-  html,body{margin:0;height:100%;background:#111;display:grid;place-items:center;
-            font-family:Georgia,'Times New Roman',serif;color:#ddd}
-  #wrap{position:relative}
-  canvas{display:block;cursor:none;background:#000;touch-action:none}
+  html,body{margin:0;height:100%;background:#111;color:#ddd;
+            font-family:Georgia,'Times New Roman',serif;
+            overscroll-behavior:none;-webkit-text-size-adjust:100%}
+  body{display:flex;flex-direction:column;align-items:center;justify-content:center;
+       gap:0;padding:8px 8px 10px;box-sizing:border-box;touch-action:manipulation}
+
+  canvas{display:block;background:#000;touch-action:none}
   canvas.sharp{image-rendering:pixelated}
-  #hint{position:absolute;left:0;right:0;bottom:-30px;text-align:center;
-        font-size:12px;color:#7a7a7a;min-height:16px}
+  /* Con tro tu ve chi hop ly voi chuot. Cam ung thi de he thong lo. */
+  @media (pointer:fine){ canvas{cursor:none} }
+
+  #below{width:100%;max-width:640px;display:flex;flex-direction:column;
+         align-items:center}
+
   /* Phu de nam DUOI canvas, giong ban goc dat o thanh giao dien duoi vung choi */
-  #caption{margin-top:14px;min-height:34px;max-width:640px;text-align:center;
+  #caption{margin-top:10px;min-height:32px;text-align:center;
            font-size:14px;line-height:1.35;color:#cfcfcf;opacity:0;
            transition:opacity .18s}
   #caption.on{opacity:1}
+
   #keys{display:flex;flex-wrap:wrap;gap:8px 18px;justify-content:center;
-        margin-top:18px;font-size:12px;color:#8d8d8d}
+        margin-top:12px;font-size:12px;color:#8d8d8d}
   #keys span{display:inline-flex;align-items:center;gap:6px}
   kbd{display:inline-block;min-width:19px;padding:2px 6px;text-align:center;
       font:600 11px/1.4 ui-monospace,Consolas,monospace;color:#e8e8e8;
       background:linear-gradient(#3a3a3a,#2b2b2b);border:1px solid #4a4a4a;
       border-bottom-width:2px;border-radius:4px;
       box-shadow:0 1px 0 rgba(0,0,0,.5)}
+
+  /* Nut cam ung - thay cho hang phim tat tren may khong co ban phim */
+  #touchbar{display:none;gap:10px;margin-top:12px}
+  #touchbar button{min-width:74px;min-height:38px;padding:0 12px;
+      font:inherit;font-size:13px;color:#e8e8e8;
+      background:linear-gradient(#3a3a3a,#2b2b2b);border:1px solid #4a4a4a;
+      border-bottom-width:2px;border-radius:6px;touch-action:manipulation}
+  #touchbar button:active{background:#242424;transform:translateY(1px)}
+
   /* Thanh diem nam NGOAI khung 640x400 - trong khung la art goc, khong ve de len */
-  #stats{display:flex;gap:22px;justify-content:center;margin-top:16px;
-         font-size:13px;color:#9a9a9a;letter-spacing:.02em}
+  #stats{display:flex;flex-wrap:wrap;gap:8px 20px;justify-content:center;
+         margin-top:12px;font-size:13px;color:#9a9a9a;letter-spacing:.02em}
   #stats b{color:#e0e0e0;font-weight:normal}
   #stats .ach{color:#c8a24a}
+
+  #hint{margin-top:8px;text-align:center;font-size:12px;color:#7a7a7a;min-height:16px}
+
+  /* Man hinh nhac xoay ngang. Art goc chi co 640x400 (ti le 1.6) nen man doc
+     khong the hien du to de bam - cac hotspot nho nhat chi 13x10 pixel. */
+  #rotate{display:none;position:fixed;inset:0;z-index:10;background:#111;
+          flex-direction:column;align-items:center;justify-content:center;
+          gap:18px;text-align:center;padding:24px}
+  #rotate svg{width:64px;height:64px;stroke:#c8a24a;fill:none;stroke-width:1.5}
+  #rotate p{margin:0;font-size:16px;color:#ddd;max-width:22em;line-height:1.5}
+  #rotate small{color:#888;font-size:13px}
+
+  @media (pointer:coarse){
+    #keys{display:none}
+    #touchbar{display:flex}
+  }
+
+  /* Man hinh thap (dien thoai nam ngang chi cao ~390px): khoi duoi canvas an
+     mat gan nua chieu cao. Cho no noi len tren, canvas duoc dung het chieu cao. */
+  @media (max-height:560px){
+    body{padding:4px}
+    #below{position:fixed;left:0;right:0;bottom:6px;pointer-events:none;
+           max-width:none}
+    #touchbar{pointer-events:auto;margin-top:0;gap:8px}
+    #touchbar button{min-width:64px;min-height:34px;font-size:12px;opacity:.88}
+    #caption{margin-top:0;margin-bottom:8px;min-height:0;padding:0 12px;
+             font-size:13px;text-shadow:0 1px 3px #000,0 0 8px #000}
+    #keys,#stats,#hint{display:none}
+  }
+  @media (pointer:coarse) and (orientation:portrait){
+    #rotate{display:flex}
+  }
 </style>
 
-<div id="wrap">
-  <canvas id="c" width="640" height="400"></canvas>
+<canvas id="c" width="640" height="400"></canvas>
+
+<div id="below">
   <div id="caption"></div>
   <div id="keys">
     <span><kbd>Left click</kbd> pick up &amp; place</span>
@@ -44,8 +97,22 @@
     <span><kbd>C</kbd> captions</span>
     <span><kbd>T</kbd> self-check</span>
   </div>
+  <div id="touchbar">
+    <button id="btn-round" type="button">New round</button>
+    <button id="btn-mute"  type="button">Mute</button>
+    <button id="btn-cap"   type="button">Captions</button>
+  </div>
   <div id="stats"></div>
   <div id="hint"></div>
+</div>
+
+<div id="rotate">
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <rect x="3" y="7" width="18" height="10" rx="1.5"/>
+    <path d="M8.5 3.2a9 9 0 0 1 7 0M8.5 20.8a9 9 0 0 0 7 0"/>
+  </svg>
+  <p>Please rotate your device</p>
+  <small>The original artwork is 640&#215;400, so the counter needs a landscape screen.</small>
 </div>
 
 <script type="module" src="src/main.js"></script>

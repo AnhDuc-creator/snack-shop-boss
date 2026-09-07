@@ -57,6 +57,30 @@ Ghi ra day de sau nay khong ai "sua nham" lai.
 
 ## Da lam xong
 
+- **Choi duoc tren dien thoai.** Bon van de, tim ra bang cach doc code chu khong
+  doan:
+  1. **THIEU THE VIEWPORT** - day la nguyen nhan goc. Khong co no, trinh duyet
+     di dong dung trang o chieu rong ao 980px roi thu nho ca trang xuong vua man
+     hinh. `fitCanvas` tinh ra canvas 941px, tuong la to, nhung thuc te chi con
+     ~385px vat ly. Hotspot co lai con mot hai milimet nen cham gan nhu khong
+     trung, va khong cach nao "vua man hinh" duoc vi thu nho o tang trinh duyet.
+  2. `fitCanvas` tru cung 70px cho phan duoi canvas, trong khi o do gio co phu
+     de, hang phim tat va thanh diem. Gio do bang `offsetHeight` that va theo doi
+     bang `ResizeObserver`.
+  3. Man ngang dien thoai chi cao ~390px, khoi duoi canvas an mat gan nua. Duoi
+     `max-height:560px` thi cho no noi len tren, canvas dung het chieu cao -
+     tu 346px len 611px.
+  4. Hang phim tat vo nghia tren may khong co ban phim. Duoi `pointer:coarse`
+     thi an di, thay bang ba nut cam ung.
+
+  Kem theo: man hinh nhac xoay ngang khi may dung doc (art goc 640x400 ti le 1.6,
+  man doc khong the hien du to de bam); `cursor:none` chi ap dung cho chuot;
+  noi vung bam them 3px cho cac TRAM tren cam ung.
+
+  **3px chu khong phai 5px**: da kiem tung cap hotspot, `chips`/`meat` cach nhau
+  9px va `milk`/`juice` cach nhau 8px nen 5px lam chung chong nhau.
+  **Khong noi o tren khay**: o `fruit` va `sandwich` cua khay trai chi cach 3px.
+
 - **Bo test cho gossip.** `game/test/gossip.test.mjs` - gia lap Web Audio,
   `localStorage` va nen thoi gian bang `mock.timers`, khong va module nen
   `gossip.js` van di qua `sound.js` va `captions.js` that.

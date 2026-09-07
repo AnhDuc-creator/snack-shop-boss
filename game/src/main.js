@@ -7,7 +7,7 @@ import { S, newRound, click, scrollOrders, tick,
 import { initSound, toggleMute, getVolume } from './sound.js';
 import { onStatsChange, activeDemerits, hasCookAchievement } from './stats.js';
 import { runSelfCheck, summarise } from './selfcheck.js';
-import { startGossip, gossipStarted } from './gossip.js';
+import { startGossip, gossipIndex } from './gossip.js';
 import { initCaptions, toggleCaptions } from './captions.js';
 
 const cv = document.getElementById('c');
@@ -33,7 +33,7 @@ cv.addEventListener('pointerdown', e => {
   // Trinh duyet chi cho tao AudioContext sau mot cu cham cua nguoi dung, ma
   // newRound() lai chay ngay luc nap xong anh - som hon. Nen gossip cua vong
   // dau tien khong the khoi dong o do. Bat lai ngay sau khi am thanh san sang.
-  initSound().then(() => { if (!gossipStarted()) startGossip(); });
+  initSound().then(() => { if (gossipIndex() === 0) startGossip(); });
   // Cam ung khong co hover: phai cap nhat vi tri TRUOC khi xu ly bam,
   // neu khong thi cu cham dau tien se tinh vao cho con tro dang o cu.
   [S.mouse.x, S.mouse.y] = toCanvas(e);
@@ -44,6 +44,18 @@ cv.addEventListener('pointerdown', e => {
 cv.addEventListener('contextmenu', e => e.preventDefault());
 cv.addEventListener('wheel', e => { e.preventDefault(); scrollOrders(Math.sign(e.deltaY)); },
                     {passive:false});
+
+// Nut cam ung: may khong co ban phim thi khong bam duoc R / M / C.
+const btn = id => document.getElementById(id);
+btn('btn-round').addEventListener('click', () => newRound());
+btn('btn-mute').addEventListener('click', e => {
+  const on = toggleMute();
+  e.currentTarget.textContent = on ? 'Mute' : 'Unmute';
+});
+btn('btn-cap').addEventListener('click', e => {
+  const on = toggleCaptions();
+  e.currentTarget.textContent = on ? 'Captions' : 'Captions off';
+});
 
 addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
@@ -84,12 +96,26 @@ onStatsChange(st => {
   statsEl.innerHTML = parts.join('');
 });
 
+// Lap day cho con lai sau khi tru phan HTML duoi canvas. Truoc day tru cung
+// 70px, nhung duoi do gio co phu de, hang phim tat va thanh diem - cao hon nhieu.
+const belowEl = document.getElementById('below');
 function fitCanvas(){
-  const s = Math.min((innerWidth*0.96)/W, (innerHeight-70)/H);
-  cv.style.width  = Math.round(W*s) + 'px';
-  cv.style.height = Math.round(H*s) + 'px';
+  // Tren man thap, #below duoc CSS cho noi len tren canvas nen khong tru chieu
+  // cao cua no nua - neu tru thi canvas bi ep con mot dai mong.
+  const floating = getComputedStyle(belowEl).position === 'fixed';
+  const pad    = floating ? 8 : 24;
+  const availW = innerWidth  - 16;
+  const availH = innerHeight - (floating ? 0 : belowEl.offsetHeight) - pad;
+  const s = Math.max(0.25, Math.min(availW / W, availH / H));
+  cv.style.width  = Math.round(W * s) + 'px';
+  cv.style.height = Math.round(H * s) + 'px';
 }
-addEventListener('resize', fitCanvas); fitCanvas();
+addEventListener('resize', fitCanvas);
+addEventListener('orientationchange', () => setTimeout(fitCanvas, 120));
+// Phan duoi canvas doi chieu cao khi phu de dai ngan khac nhau hoac khi
+// thanh diem xuong dong - do lai chu khong doan.
+if (window.ResizeObserver) new ResizeObserver(fitCanvas).observe(belowEl);
+fitCanvas();
 
 let last = performance.now();
 function loop(now){

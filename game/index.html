@@ -65,16 +65,19 @@
     #touchbar{display:flex}
   }
 
-  /* Man hinh thap (dien thoai nam ngang chi cao ~390px): khoi duoi canvas an
-     mat gan nua chieu cao. Cho no noi len tren, canvas duoc dung het chieu cao. */
+  /* Man hinh thap (dien thoai nam ngang chi cao ~390px).
+     Chieu cao rat hiem nhung chieu rong thi thua nhieu: canvas 640x400 dat vao
+     man 844x390 con du ~115px moi ben. Nen day nut sang LE, va chi danh mot dai
+     mong duoi day cho phu de - KHONG cho gi de len canvas. */
   @media (max-height:560px){
-    body{padding:4px}
-    #below{position:fixed;left:0;right:0;bottom:6px;pointer-events:none;
-           max-width:none}
-    #touchbar{pointer-events:auto;margin-top:0;gap:8px}
-    #touchbar button{min-width:64px;min-height:34px;font-size:12px;opacity:.88}
-    #caption{margin-top:0;margin-bottom:8px;min-height:0;padding:0 12px;
-             font-size:13px;text-shadow:0 1px 3px #000,0 0 8px #000}
+    body{padding:4px 4px 0}
+    #below{position:fixed;left:0;right:0;bottom:0;max-width:none;
+           pointer-events:none}
+    #caption{margin:0 0 3px;min-height:26px;padding:0 96px;font-size:13px;
+             display:flex;align-items:center;justify-content:center}
+    #touchbar{pointer-events:auto;position:fixed;right:6px;top:50%;
+              transform:translateY(-50%);flex-direction:column;gap:8px;margin:0}
+    #touchbar button{min-width:78px;min-height:36px;font-size:12px;opacity:.9}
     #keys,#stats,#hint{display:none}
   }
   @media (pointer:coarse) and (orientation:portrait){

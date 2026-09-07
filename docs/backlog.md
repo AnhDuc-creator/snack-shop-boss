@@ -57,6 +57,16 @@ Ghi ra day de sau nay khong ai "sua nham" lai.
 
 ## Da lam xong
 
+- **Keo tha tren cam ung.** Truoc day chi xu ly `pointerdown`, nen keo mot mon
+  roi tha ra thi no van dinh tay, phai cham them mot lan nua. Tren chuot khong
+  lo vi nguoi ta bam chu khong keo. Gio `pointerup` dat mon xuong - nhung CHI khi
+  da di qua 8px, de cu cham binh thuong khong bi xu ly hai lan.
+
+- **Phu de de len nut Pick Up tren man thap.** Cho ca khoi duoi noi len tren
+  canvas de lay chieu cao la sai cho: man ngang thieu chieu CAO nhung thua chieu
+  RONG (844 - 611 = 233px). Gio nut xuong le phai, phu de co dai rieng 32px o day,
+  khong gi de len canvas.
+
 - **Choi duoc tren dien thoai.** Bon van de, tim ra bang cach doc code chu khong
   doan:
   1. **THIEU THE VIEWPORT** - day la nguyen nhan goc. Khong co no, trinh duyet

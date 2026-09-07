@@ -7,7 +7,7 @@ import { S, newRound, click, scrollOrders, tick,
 import { initSound, toggleMute, getVolume } from './sound.js';
 import { onStatsChange, activeDemerits, hasCookAchievement } from './stats.js';
 import { runSelfCheck, summarise } from './selfcheck.js';
-import { startGossip, gossipIndex } from './gossip.js';
+import { startGossip, gossipStarted } from './gossip.js';
 import { initCaptions, toggleCaptions } from './captions.js';
 
 const cv = document.getElementById('c');
@@ -29,18 +29,39 @@ cv.addEventListener('pointermove', e => {
 });
 addEventListener('pointerup', endScrollDrag);
 addEventListener('pointercancel', endScrollDrag);
+// Diem bat dau cu bam, de phan biet CHAM voi KEO khi tha tay ra.
+let downAt = null;
+const DRAG_MIN = 8;        // di qua nhieu nay pixel thi tinh la keo
+
 cv.addEventListener('pointerdown', e => {
   // Trinh duyet chi cho tao AudioContext sau mot cu cham cua nguoi dung, ma
   // newRound() lai chay ngay luc nap xong anh - som hon. Nen gossip cua vong
   // dau tien khong the khoi dong o do. Bat lai ngay sau khi am thanh san sang.
-  initSound().then(() => { if (gossipIndex() === 0) startGossip(); });
+  initSound().then(() => { if (!gossipStarted()) startGossip(); });
   // Cam ung khong co hover: phai cap nhat vi tri TRUOC khi xu ly bam,
   // neu khong thi cu cham dau tien se tinh vao cho con tro dang o cu.
   [S.mouse.x, S.mouse.y] = toCanvas(e);
   if (e.button === 2){ S.held = null; return; }   // chuot phai: bo mon dang cam
   if (e.button !== 0) return;
+  downAt = {x:S.mouse.x, y:S.mouse.y};
+  cv.setPointerCapture?.(e.pointerId);
   click(S.mouse.x, S.mouse.y);
 });
+
+// Tha tay sau khi KEO thi dat mon xuong ngay tai do.
+// Truoc day chi xu ly luc nhan xuong, nen keo mot mon roi tha ra thi no van
+// dinh tay va phai cham them mot lan nua. Tren chuot khong lo vi nguoi ta bam
+// chu khong keo, nhung tren cam ung thi ai cung keo.
+// Chi lam khi da di qua DRAG_MIN, de cu CHAM binh thuong khong bi xu ly hai lan.
+cv.addEventListener('pointerup', e => {
+  const start = downAt; downAt = null;
+  if (!start || e.button !== 0 || isScrollDragging()) return;
+  const [x, y] = toCanvas(e);
+  if (Math.hypot(x - start.x, y - start.y) < DRAG_MIN) return;
+  S.mouse.x = x; S.mouse.y = y;
+  if (S.held) click(x, y);
+});
+cv.addEventListener('pointercancel', () => { downAt = null; });
 cv.addEventListener('contextmenu', e => e.preventDefault());
 cv.addEventListener('wheel', e => { e.preventDefault(); scrollOrders(Math.sign(e.deltaY)); },
                     {passive:false});
@@ -102,10 +123,14 @@ const belowEl = document.getElementById('below');
 function fitCanvas(){
   // Tren man thap, #below duoc CSS cho noi len tren canvas nen khong tru chieu
   // cao cua no nua - neu tru thi canvas bi ep con mot dai mong.
+  // Tren man thap, CSS cho #below xuong day va nut sang le. Chi phai danh cho
+  // phu de mot dai mong o duoi - khong tru ca khoi, khong thi canvas bi ep con
+  // mot dai; nhung cung khong tru 0, khong thi phu de de len nut Pick Up.
   const floating = getComputedStyle(belowEl).position === 'fixed';
-  const pad    = floating ? 8 : 24;
-  const availW = innerWidth  - 16;
-  const availH = innerHeight - (floating ? 0 : belowEl.offsetHeight) - pad;
+  const CAPTION_STRIP = 32;
+  const pad    = floating ? 6 : 24;
+  const availW = innerWidth  - (floating ? 180 : 16);   // chua cho nut o le phai
+  const availH = innerHeight - (floating ? CAPTION_STRIP : belowEl.offsetHeight) - pad;
   const s = Math.max(0.25, Math.min(availW / W, availH / H));
   cv.style.width  = Math.round(W * s) + 'px';
   cv.style.height = Math.round(H * s) + 'px';

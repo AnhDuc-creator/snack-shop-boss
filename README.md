@@ -1,6 +1,6 @@
 # Snack Shop Boss
 
-Dựng lại minigame quầy đồ ăn vặt trong _Nancy Drew #21: Warnings at Waverly Academy_
+Dựng lại minigame quầy đồ ăn vặt trong *Nancy Drew #21: Warnings at Waverly Academy*
 (Her Interactive, 2009) để chạy trên trình duyệt.
 
 Điểm khác biệt so với một bản clone thông thường: **mọi con số trong game đều lấy từ bản
@@ -11,23 +11,22 @@ Chi tiết ở [`docs/spec.md`](docs/spec.md).
 ## Chơi ngay
 
 <!-- Sửa lại đường dẫn sau khi bật GitHub Pages -->
-
-https://AnhDuc-creator.github.io/snack-shop-boss/
+https://TÊN-TÀI-KHOẢN.github.io/snack-shop-boss/
 
 Không cần cài gì, không cần sở hữu bản gốc.
 
 ## Điều khiển
 
-| Thao tác                      | Kết quả                                     |
-| ----------------------------- | ------------------------------------------- |
-| Chuột trái                    | Nhặt món, đặt món, bấm nút                  |
-| Chuột phải                    | Bỏ món đang cầm                             |
-| Con lăn                       | Cuộn danh sách đơn                          |
-| Rê chuột lên mép khung Orders | Tự cuộn                                     |
-| `R`                           | Vòng đơn mới                                |
-| `D`                           | Hiện khung bấm (đỏ là trạm, xanh là ô khay) |
-| `S`                           | Đổi giữa mượt và sắc cạnh                   |
-| `M`                           | Tắt bật tiếng                               |
+| Thao tác | Kết quả |
+|---|---|
+| Chuột trái | Nhặt món, đặt món, bấm nút |
+| Chuột phải | Bỏ món đang cầm |
+| Con lăn | Cuộn danh sách đơn |
+| Rê chuột lên mép khung Orders | Tự cuộn |
+| `R` | Vòng đơn mới |
+| `D` | Hiện khung bấm (đỏ là trạm, xanh là ô khay) |
+| `S` | Đổi giữa mượt và sắc cạnh |
+| `M` | Tắt bật tiếng |
 
 ## Luật chơi
 
@@ -70,7 +69,7 @@ game/test/        test cho bộ sinh đơn
 ## Test
 
 ```
-node --test game/test/orders.test.mjs
+node --test "game/test/*.test.mjs"
 ```
 
 Tự chạy trên mỗi lần push qua GitHub Actions, đạt mới deploy.
@@ -80,10 +79,10 @@ Tự chạy trên mỗi lần push qua GitHub Actions, đạt mới deploy.
 Mã nguồn, tài liệu và công cụ trong repo này là của tác giả, phát hành tự do.
 
 **Hình ảnh và âm thanh trong `game/assets/` thuộc bản quyền của Her Interactive, Inc.**
-Chúng được đưa vào đây _với sự cho phép của Her Interactive_, dành cho cộng đồng người hâm
+Chúng được đưa vào đây *với sự cho phép của Her Interactive*, dành cho cộng đồng người hâm
 mộ. Mọi quyền đối với các tài sản đó vẫn thuộc về Her Interactive.
 
-_Nancy Drew_ là nhãn hiệu của Simon & Schuster, Inc. Dự án này không phải sản phẩm chính
+*Nancy Drew* là nhãn hiệu của Simon & Schuster, Inc. Dự án này không phải sản phẩm chính
 thức và không liên kết với Her Interactive hay Simon & Schuster.
 
 <!-- TODO: ghi rõ phạm vi cho phép theo đúng văn bản bạn nhận được:

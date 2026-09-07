@@ -99,10 +99,15 @@ Select-String -Path extracted/lua_strings.txt -Pattern "^=====" | Where-Object L
 ## Test
 
 ```
-node --test game/test/orders.test.mjs
+node --test "game/test/*.test.mjs"
 ```
 
-Chạy test sau mỗi lần đụng vào `orders.js` hoặc `data.js`.
+Nhớ giữ dấu ngoặc kép. Dạng `node --test game/test/` hỏng trên Node 22 chạy qua
+Git Bash trên Windows — nó không nhận thư mục, báo `Cannot find module`.
+
+Chạy test sau mỗi lần đụng vào `game/src/`. Hiện có hai bộ:
+`orders.test.mjs` phủ bộ sinh đơn, `gossip.test.mjs` phủ chuỗi đối đáp, tạm dừng,
+lưu tiến độ và quay vòng.
 
 ## Về thư mục làm việc cũ
 

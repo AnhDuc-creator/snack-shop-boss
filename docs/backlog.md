@@ -41,16 +41,6 @@ Ghi ra day de sau nay khong ai "sua nham" lai.
   buong ra la bien mat nen khong che art luc binh thuong.
 - **Vach thoi gian vong giao vien.** Ban goc chi bao bang tieng chuong.
 - **Gossip quay vong khi het 21 nhom.** Xem `LOOP_WHEN_EXHAUSTED` trong `gossip.js`.
-- **Gossip phat nhieu nhom trong mot vong.** Ban goc moi lan vao scene chi phat dung
-  mot nhom - hop ly vi nguoi choi ra vao quay lien tuc. O day mot vong keo may phut
-  nen phan lon thoi gian se im. `REPEAT_GAP` trong `gossip.js` cho phat nhom ke tiep
-  sau 25-45 giay im lang, van trong cung vong; dat `null` la tro ve ban goc.
-- **Tam dung gossip la bo han nhom dang phat.** Ban goc chan bang cach giu dong ho
-  `gossipDelay` khong chay, nen la tam dung roi noi tiep dung cho cu. O day
-  `pauseGossip(true)` cat luon nhom dang phat: vao vong giao vien thi quay im ngay,
-  khong con cau nao noi not. Nhom ke tiep phat o vong sau. Xem `playChain` trong
-  `gossip.js` - moi cho noi chuoi kiem ca `running` lan `paused`, vi `stop()` van
-  ban `ended` nen khong chan thi chuoi tu chay het nhom du dang tam dung.
 - **Thanh diem va hang phim tat** nam NGOAI khung 640x400. Trong khung la art goc,
   khong ve de len.
 
@@ -66,6 +56,13 @@ Ghi ra day de sau nay khong ai "sua nham" lai.
   `(2,2,188,247)`: chung la do tren ke cua chinh anh mo do.
 
 ## Da lam xong
+
+- **Bo test cho gossip.** `game/test/gossip.test.mjs` - gia lap Web Audio,
+  `localStorage` va nen thoi gian bang `mock.timers`, khong va module nen
+  `gossip.js` van di qua `sound.js` va `captions.js` that.
+  Phu bon hanh vi: chuoi doi dap doi cau truoc dut, `pauseGossip` cat ngay,
+  chi so nhom nho qua `localStorage`, va quay vong khi het bang.
+  Da kiem NGUOC: cay lai tung loi roi xac nhan test bat duoc ca bon.
 
 - **Nap thung rac.** Truoc day `TRASH.source` chua bao gio duoc ve nen nap khong
   bao gio mo. Gio vut mon vao thi nap bat len trong `ovlDuration = 0.25` giay
